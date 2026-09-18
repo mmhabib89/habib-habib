@@ -30,16 +30,9 @@
   assign section_id = 'ShoppableImageGrid-' | append: section.id
 
   # Resolve the optional "Automatic bundle product" to a concrete variant id.
-  # The theme-level setting (settings.bundle_product) is the source of truth;
-  # the legacy section-level setting (section.settings.bundle_product) is a
-  # fallback so existing grids keep working after the setting moved to the
-  # theme editor. When a product is configured, picking the trigger option
-  # values (default Black + Medium, see shouldAddBundle in JS) adds this
-  # product's first available variant to the cart as a bundle item.
-  assign bundle_product = settings.bundle_product
-  if bundle_product == blank
-    assign bundle_product = section.settings.bundle_product
-  endif
+  # When the customer picks Black + Medium (see shouldAddBundle in JS) this
+  # variant is added to the cart as a free/first bundle item.
+  assign bundle_product = section.settings.bundle_product
   if bundle_product != blank
     assign bundle_variant = bundle_product.selected_or_first_available_variant
     assign bundle_variant_id = bundle_variant.id
@@ -47,10 +40,6 @@
     # No bundle configured -> pass 0 so the JS never appends a bundle item.
     assign bundle_variant_id = 0
   endif
-
-  # Trigger option values. Read once here so the section JS and the theme-wide
-  # automatic-bundle interceptor agree on what combo adds the bundle.
-  assign bundle_trigger_values = settings.bundle_option_values | default: 'Black, Medium' | split: ','
 -%}
 
 <section
@@ -2114,26 +2103,25 @@
     }
 
     /* ==========================================================
-       SHOULD ADD BUNDLE — true when the selected variant matches the
-       configured trigger option values (e.g. "Black + Medium", from the
-       theme setting bundle_option_values).
+       SHOULD ADD BUNDLE — true when the selected variant is
+       "Black + Medium" (the auto-bundle trigger combination).
        ========================================================== */
-    const bundleTriggerValues = [
-      {%- for value in bundle_trigger_values -%}
-        {{ value | strip | downcase | json }}{% unless forloop.last %},{% endunless %}
-      {%- endfor -%}
-    ];
-
     function shouldAddBundle(selectedVariant) {
       if (!selectedVariant || !selectedVariant.options) {
         return false;
       }
-      const normalizedOptions = selectedVariant.options.map((value) =>
-        String(value).trim().toLowerCase()
-      );
-      return bundleTriggerValues.every((triggerValue) =>
-        normalizedOptions.includes(triggerValue)
-      );
+      let hasBlack = false;
+      let hasMedium = false;
+      selectedVariant.options.forEach(function (value) {
+        const normalized = String(value).trim().toLowerCase();
+        if (normalized === 'black') {
+          hasBlack = true;
+        }
+        if (normalized === 'medium') {
+          hasMedium = true;
+        }
+      });
+      return hasBlack && hasMedium;
     }
 
     /* ==========================================================
