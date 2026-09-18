@@ -1453,6 +1453,24 @@
     ]
   },
   {
+    "name": "Automatic bundle",
+    "settings": [
+      {
+        "type": "product",
+        "id": "bundle_product",
+        "label": "Automatic bundle product",
+        "info": "This product is automatically added to the cart when a product with the trigger option values below is added."
+      },
+      {
+        "type": "text",
+        "id": "bundle_option_values",
+        "label": "Trigger option values",
+        "info": "Comma-separated option values that must all be selected on the added product.",
+        "default": "Black, Medium"
+      }
+    ]
+  },
+  {
     "name": "t:settings_schema.customer_accounts.name",
     "settings": [
       {
