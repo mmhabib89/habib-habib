@@ -1,0 +1,2202 @@
+{% comment %}
+  ============================================================================
+  ADVANCE HERO (Herotest) — Shopify OS 2.0 hero section
+  ----------------------------------------------------------------------------
+  Full-configurable hero with an integrated announcement-style top bar,
+  overlay, two CTA buttons, and a bottom text bar.
+
+  FIXED IN THIS VERSION:
+  - Mobile top bar rebuilt: hamburger absolute-left, logo true-center,
+    center text row, full-width button row
+  - Removed unscoped global CSS (.herotest-button--top 80%,
+    .menu-drawer__navigation padding) that leaked outside the section
+  - Removed header-drawer z-index overrides that fought Dawn's own stacking
+  - Desktop grid columns hardened with minmax(0, 1fr)
+  - Mobile background image override simplified (no redundant !important block)
+  - Mobile content vertical position now configurable (top/center/bottom)
+  - Mobile text+button background now a toggleable color + padding setting
+    instead of hardcoded white per element
+  ============================================================================
+{% endcomment %}
+
+{% liquid
+  # ---------------------------------------------------------------------------
+  # SECTION-WIDE VARIABLES
+  # ---------------------------------------------------------------------------
+
+  # Unique element id per section instance. Every scoped CSS rule and the
+  # script at the bottom target this id so multiple instances never clash.
+  assign section_id = 'herotest-' | append: section.id
+
+  # Map the "Content vertical position - Mobile" setting to the CSS
+  # justify-content value used on the hero content block. The result is
+  # injected through the --ht-mobile-content-justify custom property.
+  case section.settings.mobile_content_position
+    when 'center'
+      assign mobile_content_justify = 'center'
+    when 'bottom'
+      assign mobile_content_justify = 'flex-end'
+    else
+      # 'top' (and any unknown value) defaults to flex-start.
+      assign mobile_content_justify = 'flex-start'
+  endcase
+%}
+
+<section
+  id="{{ section_id }}"
+  class="herotest-section"
+>
+
+  {% comment %}
+    ==========================================================================
+    1. TOP BAR
+    ==========================================================================
+    Optional announcement strip rendered above the hero photo.
+
+    Desktop layout (CSS grid, three columns):
+      [ hamburger + logo ]   [ center text ]   [ button ]
+
+    Mobile layout (CSS flex, stacked):
+      Row 1 - hamburger (absolute left) + logo (true center)
+      Row 2 - center text
+      Row 3 - full-width button
+  {% endcomment %}
+  {% if section.settings.show_top_bar %}
+
+    <div
+      class="herotest-topbar"
+      style="
+        --ht-top-bg: {{ section.settings.top_bg }};
+        --ht-top-text-color: {{ section.settings.top_text_color }};
+        --ht-top-padding-y: {{ section.settings.top_padding_y }}px;
+      "
+    >
+
+      <div class="herotest-topbar__inner">
+
+        {% comment %}
+          1.1 LEFT COLUMN — hamburger (mobile only) + logo
+        {% endcomment %}
+        <div class="herotest-topbar__left">
+
+          {% comment %}
+            Custom hamburger button. On click it programmatically triggers
+            Dawn's native <header-drawer> (see the script at the bottom of
+            this file). Kept hidden on desktop via CSS.
+          {% endcomment %}
+          <button
+            type="button"
+            class="herotest-topbar__close"
+            aria-label="Open menu"
+            aria-expanded="false"
+          >
+            <span class="herotest-menu-icon" aria-hidden="true">
+              <span></span>
+              <span></span>
+              <span></span>
+            </span>
+          </button>
+
+          {% comment %}
+            Logo wrapper. Split across conditionals so the same inner markup
+            (image or shop-name fallback) is shared by both branches:
+              - with a link  -> <a href="...">
+              - without link -> plain <div>
+          {% endcomment %}
+          {% if section.settings.show_logo %}
+
+            {% if section.settings.logo_link != blank %}
+              <a
+                href="{{ section.settings.logo_link }}"
+                class="herotest-logo"
+                aria-label="{{ shop.name | escape }}"
+            {% else %}
+              <div class="herotest-logo">
+            {% endif %}
+
+              {% if section.settings.logo != blank %}
+                {{ section.settings.logo | image_url: width: 600 | image_tag: class: 'herotest-logo__image', widths: '100,150,200,300,400,600', loading: 'eager', alt: shop.name }}
+              {% else %}
+                <span class="herotest-logo__text">{{ shop.name }}</span>
+              {% endif %}
+
+            {% if section.settings.logo_link != blank %}
+              </a>
+            {% else %}
+              </div>
+            {% endif %}
+
+          {% endif %}
+
+        </div>
+
+        {% comment %}
+          1.2 CENTER COLUMN — announcement / promo text
+        {% endcomment %}
+        <div class="herotest-topbar__center">
+
+          {% if section.settings.show_top_text and section.settings.top_text != blank %}
+            <div
+              class="herotest-topbar__text"
+              style="color: {{ section.settings.top_text_color }};"
+            >
+              {{ section.settings.top_text }}
+            </div>
+          {% endif %}
+
+        </div>
+
+        {% comment %}
+          1.3 RIGHT COLUMN — top bar button
+          When no link is configured the anchor falls back to "#" and is
+          marked aria-disabled so it stays non-navigational.
+        {% endcomment %}
+        <div class="herotest-topbar__right">
+
+          {% if section.settings.show_top_button and section.settings.top_button_text != blank %}
+
+            {% if section.settings.top_button_link != blank %}
+              <a href="{{ section.settings.top_button_link }}"
+            {% else %}
+              <a href="#" aria-disabled="true"
+            {% endif %}
+
+            class="herotest-button herotest-button--top"
+            style="
+              --ht-top-button-bg: {{ section.settings.top_button_bg }};
+              --ht-top-button-color: {{ section.settings.top_button_text_color }};
+              --ht-top-button-hover-bg: {{ section.settings.top_button_hover_bg }};
+              --ht-top-button-hover-color: {{ section.settings.top_button_hover_text_color }};
+            "
+          >
+
+            <span class="herotest-button__text">
+              {{ section.settings.top_button_text }}
+            </span>
+
+            {% if section.settings.show_top_button_arrow %}
+              <span class="herotest-button__arrow" aria-hidden="true">
+                &rarr;
+              </span>
+            {% endif %}
+
+          </a>
+
+          {% endif %}
+
+        </div>
+
+      </div>
+
+    </div>
+
+  {% endif %}
+
+  {% comment %}
+    ==========================================================================
+    2. HERO
+    ==========================================================================
+    Background photo + optional overlay + content column + CTA.
+  {% endcomment %}
+
+  <div
+    class="herotest-hero"
+    style="
+      --ht-hero-height: {{ section.settings.hero_min_height }}px;
+      --ht-mobile-content-justify: {{ mobile_content_justify }};
+      --ht-mobile-content-bg: {{ section.settings.mobile_content_bg_color }};
+      --ht-mobile-content-padding: {{ section.settings.mobile_content_bg_padding }}px;
+    "
+  >
+
+    {% comment %}
+      2.1 BACKGROUND
+      The image URL is stored as a CSS custom property (--ht-desktop-bg-image)
+      so the mobile media query can swap in the mobile image without touching
+      the HTML. Declared via an if/else because a blank image_picker outputs
+      literal "url('')", which breaks the whole background rule.
+    {% endcomment %}
+    <div
+      class="herotest-hero__background"
+      {% if section.settings.desktop_image != blank %}
+        style="
+          --ht-desktop-bg-image: url('{{ section.settings.desktop_image | image_url: width: 3000 | escape }}');
+          --ht-desktop-bg-position-x: {{ section.settings.desktop_image_position_x }}%;
+          --ht-desktop-bg-position-y: {{ section.settings.desktop_image_position_y }}%;
+        "
+      {% else %}
+        style="
+          --ht-desktop-bg-image: none;
+          --ht-desktop-bg-position-x: 50%;
+          --ht-desktop-bg-position-y: 50%;
+        "
+      {% endif %}
+      aria-hidden="true"
+    ></div>
+
+    {% comment %}
+      2.2 OVERLAY — optional darkening layer between photo and content.
+      Opacity is converted from the 0-100 (%) setting to a 0-1 CSS value
+      using a float division (see divided_by: 100.0).
+    {% endcomment %}
+    {% if section.settings.enable_overlay %}
+      <div
+        class="herotest-hero__overlay"
+        aria-hidden="true"
+        style="
+          --ht-overlay-color: {{ section.settings.overlay_color }};
+          --ht-overlay-opacity: {{ section.settings.overlay_opacity | divided_by: 100.0 }};
+        "
+      ></div>
+    {% endif %}
+
+    {% comment %}
+      2.3 CONTENT CONTAINER — centered max-width wrapper. Vertical alignment
+      of the inner content column is handled per-breakpoint (desktop via
+      content_vertical, mobile via mobile_content_position).
+    {% endcomment %}
+    <div class="herotest-hero__container">
+
+      <div
+        class="
+          herotest-hero__content
+          herotest-hero__content--horizontal-{{ section.settings.content_horizontal }}
+          herotest-hero__content--vertical-{{ section.settings.content_vertical }}
+        "
+        style="max-width: {{ section.settings.content_max_width }}px;"
+      >
+
+        <div class="herotest-hero__content-inner">
+
+          {% comment %}
+            2.3.1 HERO HEADING
+          {% endcomment %}
+          {% if section.settings.show_heading and section.settings.heading != blank %}
+            <h1
+              class="herotest-hero__heading"
+              style="
+                color: {{ section.settings.heading_color }};
+                font-size: {{ section.settings.heading_size_desktop }}px;
+              "
+            >
+              {{ section.settings.heading }}
+            </h1>
+          {% endif %}
+
+          {% comment %}
+            2.3.2 HERO PARAGRAPH — newline_to_br renders textarea line breaks
+            as <br> tags for multi-line copy.
+          {% endcomment %}
+          {% if section.settings.show_paragraph and section.settings.paragraph != blank %}
+            <div
+              class="herotest-hero__description"
+              style="
+                color: {{ section.settings.paragraph_color }};
+                font-size: {{ section.settings.paragraph_size_desktop }}px;
+              "
+            >
+              {{ section.settings.paragraph | newline_to_br }}
+            </div>
+          {% endif %}
+
+          {% comment %}
+            2.3.3 HERO BUTTON — same "#" + aria-disabled fallback pattern as
+            the top bar button when no link is set.
+          {% endcomment %}
+          {% if section.settings.show_hero_button and section.settings.hero_button_text != blank %}
+
+            <div class="herotest-hero__button-wrapper">
+
+              {% if section.settings.hero_button_link != blank %}
+                <a href="{{ section.settings.hero_button_link }}"
+              {% else %}
+                <a href="#" aria-disabled="true"
+              {% endif %}
+
+              class="herotest-button herotest-button--hero"
+              style="
+                --ht-hero-button-bg: {{ section.settings.hero_button_bg }};
+                --ht-hero-button-color: {{ section.settings.hero_button_text_color }};
+                --ht-hero-button-hover-bg: {{ section.settings.hero_button_hover_bg }};
+                --ht-hero-button-hover-color: {{ section.settings.hero_button_hover_text_color }};
+              "
+            >
+
+              <span class="herotest-button__text">
+                {{ section.settings.hero_button_text }}
+              </span>
+
+              {% if section.settings.show_hero_button_arrow %}
+                <span class="herotest-button__arrow" aria-hidden="true">
+                  &rarr;
+                </span>
+              {% endif %}
+
+            </a>
+
+            </div>
+
+          {% endif %}
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  {% comment %}
+    ==========================================================================
+    3. BOTTOM TEXT BAR
+    ==========================================================================
+    Optional slim strip under the hero photo (centered, full-width).
+  {% endcomment %}
+  {% if section.settings.show_bottom_bar %}
+
+    <div
+      class="herotest-bottom"
+      style="
+        background-color: {{ section.settings.bottom_bg }};
+        color: {{ section.settings.bottom_text_color }};
+        padding-top: {{ section.settings.bottom_padding_y }}px;
+        padding-bottom: {{ section.settings.bottom_padding_y }}px;
+      "
+    >
+
+      {% if section.settings.bottom_text != blank %}
+        <div
+          class="herotest-bottom__text"
+          style="color: {{ section.settings.bottom_text_color }};"
+        >
+          {{ section.settings.bottom_text }}
+        </div>
+      {% endif %}
+
+    </div>
+
+  {% endif %}
+
+</section>
+
+
+<style>
+/* ==========================================================================
+   GLOBAL — section wrapper
+   ========================================================================== */
+
+#{{ section_id }} {
+  width: 100%;
+  display: block;
+  position: relative;
+  overflow: hidden;
+}
+
+
+/* ==========================================================================
+   TOP BAR
+   ========================================================================== */
+
+#{{ section_id }} .herotest-topbar {
+  width: 100%;
+  position: relative;
+  background: var(--ht-top-bg);
+  padding-top: var(--ht-top-padding-y);
+  padding-bottom: var(--ht-top-padding-y);
+}
+
+/* Three-column grid: left (logo) / center (text) / right (button).
+   minmax(0, 1fr) on the outer columns stops long text or a wide logo from
+   pushing the center column off-axis. */
+#{{ section_id }} .herotest-topbar__inner {
+  width: 100%;
+  max-width: {{ section.settings.topbar_max_width }}px;
+  margin: 0 auto;
+  padding-left: {{ section.settings.topbar_side_padding }}px;
+  padding-right: {{ section.settings.topbar_side_padding }}px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 20px;
+  box-sizing: border-box;
+}
+
+
+/* ---------------------------------------------------------------------------
+   TOP BAR - LEFT COLUMN / LOGO
+   --------------------------------------------------------------------------- */
+
+#{{ section_id }} .herotest-topbar__left {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  position: relative;
+}
+
+#{{ section_id }} .herotest-logo {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  color: var(--ht-top-text-color);
+  max-width: 100%;
+}
+
+#{{ section_id }} .herotest-logo__image {
+  display: block;
+  width: {{ section.settings.logo_width }}px;
+  max-width: 100%;
+  height: auto;
+}
+
+/* Fallback text logo used when no image is uploaded. */
+#{{ section_id }} .herotest-logo__text {
+  color: var(--ht-top-text-color);
+  font-size: {{ section.settings.logo_text_size }}px;
+  font-weight: {{ section.settings.logo_font_weight }};
+  letter-spacing: {{ section.settings.logo_letter_spacing }}px;
+  line-height: 1;
+}
+
+
+/* ---------------------------------------------------------------------------
+   TOP BAR - MOBILE MENU BUTTON
+   Hidden above the mobile breakpoint; shown (absolute) only on mobile.
+   --------------------------------------------------------------------------- */
+
+#{{ section_id }} .herotest-topbar__close {
+  display: none;
+}
+
+/* Three-bar hamburger icon. */
+#{{ section_id }} .herotest-menu-icon {
+  width: 22px;
+  height: 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+#{{ section_id }} .herotest-menu-icon span {
+  display: block;
+  width: 100%;
+  height: 2px;
+  background: currentColor;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+/* Animate the three bars into an "X" when the drawer is open
+   (class is toggled from the script). */
+#{{ section_id }} .herotest-topbar__close.is-open .herotest-menu-icon span:nth-child(1) {
+  transform: translateY(8px) rotate(45deg);
+}
+
+#{{ section_id }} .herotest-topbar__close.is-open .herotest-menu-icon span:nth-child(2) {
+  opacity: 0;
+}
+
+#{{ section_id }} .herotest-topbar__close.is-open .herotest-menu-icon span:nth-child(3) {
+  transform: translateY(-8px) rotate(-45deg);
+}
+
+
+/* ---------------------------------------------------------------------------
+   TOP BAR - CENTER TEXT
+   --------------------------------------------------------------------------- */
+
+#{{ section_id }} .herotest-topbar__center {
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+#{{ section_id }} .herotest-topbar__text {
+  font-size: {{ section.settings.top_text_size }}px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+
+/* ---------------------------------------------------------------------------
+   TOP BAR - RIGHT BUTTON COLUMN
+   --------------------------------------------------------------------------- */
+
+#{{ section_id }} .herotest-topbar__right {
+  min-width: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+
+/* ---------------------------------------------------------------------------
+   BUTTON BASE — shared by the top bar button and the hero button
+   --------------------------------------------------------------------------- */
+
+#{{ section_id }} .herotest-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: {{ section.settings.button_arrow_gap }}px;
+  text-decoration: none;
+  cursor: pointer;
+  border: 0;
+  border-radius: {{ section.settings.button_radius }}px;
+  transition: background-color 0.3s ease, color 0.3s ease, transform 0.3s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#{{ section_id }} .herotest-button:hover {
+  transform: translateY(-2px);
+}
+
+#{{ section_id }} .herotest-button:active {
+  transform: translateY(0);
+}
+
+#{{ section_id }} .herotest-button:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 4px;
+}
+
+/* Trailing arrow, pushed further right on hover/focus. */
+#{{ section_id }} .herotest-button__arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  font-size: 1.5em;
+  transition: transform 0.35s ease;
+}
+
+#{{ section_id }} .herotest-button:hover .herotest-button__arrow,
+#{{ section_id }} .herotest-button:focus-visible .herotest-button__arrow {
+  transform: translateX({{ section.settings.arrow_hover_distance }}px);
+}
+
+/* Top bar button variant. Colors are injected via CSS custom properties. */
+#{{ section_id }} .herotest-button--top {
+  min-width: {{ section.settings.top_button_min_width }}px;
+  padding:
+    {{ section.settings.top_button_padding_y }}px
+    {{ section.settings.top_button_padding_x }}px;
+  background-color: var(--ht-top-button-bg);
+  color: var(--ht-top-button-color);
+  font-size: {{ section.settings.top_button_font_size }}px;
+  text-align: center;
+}
+
+#{{ section_id }} .herotest-button--top:hover {
+  background-color: var(--ht-top-button-hover-bg);
+  color: var(--ht-top-button-hover-color);
+}
+
+
+/* ==========================================================================
+   HERO
+   ========================================================================== */
+
+#{{ section_id }} .herotest-hero {
+  position: relative;
+  width: 100%;
+  min-height: var(--ht-hero-height);
+  isolation: isolate;
+  overflow: hidden;
+}
+
+/* Background photo. Uses the CSS custom property set inline in the markup so
+   the mobile query can swap images without duplicating declarations. */
+#{{ section_id }} .herotest-hero__background {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  background-color: #f5f5f5; /* fallback while the image loads / if blank */
+  background-image: var(--ht-desktop-bg-image);
+  background-position: var(--ht-desktop-bg-position-x) var(--ht-desktop-bg-position-y);
+  background-repeat: no-repeat;
+  background-size: cover;
+  pointer-events: none; /* never blocks clicks on the content above it */
+}
+
+/* Darkening overlay between photo and content. */
+#{{ section_id }} .herotest-hero__overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  display: block;
+  background-color: var(--ht-overlay-color);
+  opacity: var(--ht-overlay-opacity);
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   HERO CONTENT CONTAINER
+   ========================================================================== */
+
+/* Max-width wrapper; flex so the aligned content column can grow inside it. */
+#{{ section_id }} .herotest-hero__container {
+  position: relative;
+  z-index: 2; /* above background (0) and overlay (1) */
+  width: 100%;
+  max-width: {{ section.settings.hero_max_width }}px;
+  min-height: var(--ht-hero-height);
+  margin: 0 auto;
+  padding:
+    {{ section.settings.hero_padding_y }}px
+    {{ section.settings.hero_padding_x }}px;
+  display: flex;
+  box-sizing: border-box;
+}
+
+#{{ section_id }} .herotest-hero__content {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+
+/* ==========================================================================
+   CONTENT ALIGNMENT — horizontal (align-items) + vertical (justify-content)
+   ========================================================================== */
+
+#{{ section_id }} .herotest-hero__content--horizontal-left {
+  align-items: flex-start;
+  text-align: left;
+}
+
+#{{ section_id }} .herotest-hero__content--horizontal-center {
+  align-items: center;
+  text-align: center;
+}
+
+#{{ section_id }} .herotest-hero__content--horizontal-right {
+  align-items: flex-end;
+  text-align: right;
+}
+
+#{{ section_id }} .herotest-hero__content--vertical-top {
+  justify-content: flex-start;
+}
+
+#{{ section_id }} .herotest-hero__content--vertical-center {
+  justify-content: center;
+}
+
+#{{ section_id }} .herotest-hero__content--vertical-bottom {
+  justify-content: flex-end;
+}
+
+
+/* ==========================================================================
+   HEADING / DESCRIPTION
+   ========================================================================== */
+
+#{{ section_id }} .herotest-hero__heading {
+  margin: 0;
+  font-weight: {{ section.settings.heading_font_weight }};
+  line-height: {{ section.settings.heading_line_height }};
+  letter-spacing: {{ section.settings.heading_letter_spacing }}px;
+}
+
+#{{ section_id }} .herotest-hero__description {
+  margin-top: {{ section.settings.paragraph_margin_top }}px;
+  line-height: {{ section.settings.paragraph_line_height }};
+  max-width: 100%;
+}
+
+
+/* ==========================================================================
+   HERO BUTTON
+   ========================================================================== */
+
+#{{ section_id }} .herotest-hero__button-wrapper {
+  margin-top: {{ section.settings.hero_button_margin_top }}px;
+}
+
+#{{ section_id }} .herotest-button--hero {
+  min-width: {{ section.settings.hero_button_min_width }}px;
+  padding:
+    {{ section.settings.hero_button_padding_y }}px
+    {{ section.settings.hero_button_padding_x }}px;
+  background-color: var(--ht-hero-button-bg);
+  color: var(--ht-hero-button-color);
+  font-size: {{ section.settings.hero_button_font_size }}px;
+}
+
+#{{ section_id }} .herotest-button--hero:hover {
+  background-color: var(--ht-hero-button-hover-bg);
+  color: var(--ht-hero-button-hover-color);
+}
+
+
+/* ==========================================================================
+   BOTTOM BAR
+   ========================================================================== */
+
+#{{ section_id }} .herotest-bottom {
+  width: 100%;
+  padding-left: {{ section.settings.bottom_side_padding }}px;
+  padding-right: {{ section.settings.bottom_side_padding }}px;
+  text-align: center;
+  position: relative;
+  z-index: 5;
+  box-sizing: border-box;
+}
+
+#{{ section_id }} .herotest-bottom__text {
+  font-size: {{ section.settings.bottom_text_size }}px;
+  font-weight: {{ section.settings.bottom_font_weight }};
+  letter-spacing: {{ section.settings.bottom_letter_spacing }}px;
+  line-height: 1.4;
+  text-transform: {{ section.settings.bottom_text_transform }};
+}
+
+
+/* ==========================================================================
+   TABLET — 990px and below
+   ========================================================================== */
+
+@media screen and (max-width: 989px) {
+
+  #{{ section_id }} .herotest-topbar__inner {
+    padding-left: 25px;
+    padding-right: 25px;
+    gap: 15px;
+  }
+
+  #{{ section_id }} .herotest-logo__image {
+    width: {{ section.settings.logo_width_tablet }}px;
+  }
+
+  #{{ section_id }} .herotest-topbar__text {
+    font-size: {{ section.settings.top_text_size_tablet }}px;
+    white-space: normal; /* let long center text wrap on narrower screens */
+  }
+
+  #{{ section_id }} .herotest-hero,
+  #{{ section_id }} .herotest-hero__container {
+    min-height: {{ section.settings.hero_min_height_tablet }}px;
+  }
+
+  #{{ section_id }} .herotest-hero__container {
+    padding:
+      {{ section.settings.hero_padding_y_tablet }}px
+      {{ section.settings.hero_padding_x_tablet }}px;
+  }
+
+  /* !important overrides the inline font-size set on the element. */
+  #{{ section_id }} .herotest-hero__heading {
+    font-size: {{ section.settings.heading_size_tablet }}px !important;
+  }
+
+  #{{ section_id }} .herotest-hero__description {
+    font-size: {{ section.settings.paragraph_size_tablet }}px !important;
+  }
+
+}
+
+
+/* ==========================================================================
+   MOBILE — 750px and below
+   ========================================================================== */
+
+@media screen and (max-width: 749px) {
+
+  #{{ section_id }} .herotest-hero__content {
+    justify-content: var(--ht-mobile-content-justify) !important;
+    max-width: 100% !important;
+  }
+
+  /* Inner wrapper sizes to its own content and, when enabled, gets the
+     background + negative-side-margin treatment so the color band hugs the
+     text/button block edge-to-edge while the page padding stays intact. */
+  #{{ section_id }} .herotest-hero__content-inner {
+    {% if section.settings.mobile_content_bg_enable %}
+    background-color: var(--ht-mobile-content-bg);
+    width: calc(100% + {{ section.settings.hero_padding_x_mobile | times: 2 }}px);
+    margin-left: -{{ section.settings.hero_padding_x_mobile }}px;
+    margin-right: -{{ section.settings.hero_padding_x_mobile }}px;
+    padding: var(--ht-mobile-content-padding) {{ section.settings.hero_padding_x_mobile }}px;
+    box-sizing: border-box;
+    {% endif %}
+  }
+
+  #{{ section_id }} .herotest-hero__button-wrapper {
+    margin-top: {{ section.settings.hero_button_margin_top_mobile }}px;
+  }
+
+
+  /* ------------------------------------------------------------------------
+     TOP BAR WRAPPER — stacked: [logo row] -> [center text] -> [button row]
+     Row padding replaces the topbar's own vertical padding on mobile.
+     ------------------------------------------------------------------------ */
+
+  #{{ section_id }} .herotest-topbar {
+    position: relative;
+    padding-top: 0; /* rows own their padding on mobile */
+    padding-bottom: 0;
+  }
+
+  #{{ section_id }} .herotest-topbar__inner {
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 0;
+  }
+
+
+  /* ------------------------------------------------------------------------
+     ROW 1 — HAMBURGER (absolute left) + LOGO (true center)
+     ------------------------------------------------------------------------ */
+
+  #{{ section_id }} .herotest-topbar__left {
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: {{ section.settings.mobile_logo_row_bg }};
+    padding: 14px 55px; /* side padding reserves room for the hamburger */
+    box-sizing: border-box;
+  }
+
+  #{{ section_id }} .herotest-topbar__close {
+    position: absolute;
+    left: 25px;
+    top: 40%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    background: transparent;
+    color: {{ section.settings.top_text_color }};
+    cursor: pointer;
+    z-index: 5; /* low — Dawn's drawer must stay above */
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  #{{ section_id }} .herotest-logo {
+    display: block;
+    margin: 0;
+    padding: 0;
+  }
+
+  #{{ section_id }} .herotest-logo__image {
+    display: block;
+    width: {{ section.settings.logo_width_mobile }}px;
+    max-width: 100%;
+    height: auto;
+  }
+
+
+  /* ------------------------------------------------------------------------
+     ROW 2 — CENTER TEXT
+     ------------------------------------------------------------------------ */
+
+  #{{ section_id }} .herotest-topbar__center {
+    width: 100%;
+    padding: 16px 15px 12px;
+    box-sizing: border-box;
+    text-align: center;
+  }
+
+  #{{ section_id }} .herotest-topbar__text {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    font-size: {{ section.settings.top_text_size_mobile }}px;
+    line-height: 1.4;
+    white-space: normal;
+    text-align: center;
+  }
+
+
+  /* ------------------------------------------------------------------------
+     ROW 3 — BUTTON (single width rule, scoped)
+     ------------------------------------------------------------------------ */
+
+  #{{ section_id }} .herotest-topbar__right {
+    width: 100%;
+    padding: 0 15px {{ section.settings.top_padding_y | times: 2 }}px;
+    box-sizing: border-box;
+  }
+
+  #{{ section_id }} .herotest-button--top {
+    width: {{ section.settings.top_button_width_mobile }}%;
+    min-width: 0;
+    margin: 0 auto;
+    padding:
+      {{ section.settings.top_button_padding_y_mobile }}px
+      {{ section.settings.top_button_padding_x_mobile }}px;
+    font-size: {{ section.settings.top_button_font_size_mobile }}px;
+    box-sizing: border-box;
+  }
+
+
+  /* ------------------------------------------------------------------------
+     MOBILE HERO
+     ------------------------------------------------------------------------ */
+
+  #{{ section_id }} .herotest-hero,
+  #{{ section_id }} .herotest-hero__container {
+    min-height: {{ section.settings.hero_min_height_mobile }}px;
+  }
+
+  #{{ section_id }} .herotest-hero__container {
+    padding:
+      {{ section.settings.hero_padding_y_mobile }}px
+      {{ section.settings.hero_padding_x_mobile }}px;
+  }
+
+  {% comment %}
+    Mobile image override — only emitted when a mobile image exists.
+    When it is blank the desktop custom property already applies, so no
+    override is needed (this is why the background is CSS-custom-prop driven).
+  {% endcomment %}
+  {% if section.settings.mobile_image != blank %}
+
+    #{{ section_id }} .herotest-hero__background {
+      background-image: url('{{ section.settings.mobile_image | image_url: width: 1800 | escape }}');
+      background-position:
+        {{ section.settings.mobile_image_position_x }}%
+        {{ section.settings.mobile_image_position_y }}%;
+    }
+
+  {% endif %}
+
+  #{{ section_id }} .herotest-hero__heading {
+    font-size: {{ section.settings.heading_size_mobile }}px !important;
+  }
+
+  #{{ section_id }} .herotest-hero__description {
+    font-size: {{ section.settings.paragraph_size_mobile }}px !important;
+    margin-top: {{ section.settings.paragraph_margin_top_mobile }}px;
+  }
+
+  #{{ section_id }} .herotest-button--hero {
+    min-width: {{ section.settings.hero_button_min_width_mobile }}px;
+    padding:
+      {{ section.settings.hero_button_padding_y_mobile }}px
+      {{ section.settings.hero_button_padding_x_mobile }}px;
+    font-size: {{ section.settings.hero_button_font_size_mobile }}px;
+  }
+
+  #{{ section_id }} .herotest-bottom {
+    padding-left: 15px;
+    padding-right: 15px;
+  }
+
+  #{{ section_id }} .herotest-bottom__text {
+    font-size: {{ section.settings.bottom_text_size_mobile }}px;
+  }
+
+}
+
+
+/* ==========================================================================
+   REDUCED MOTION — disable transitions and hover transforms
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+
+  #{{ section_id }} .herotest-button,
+  #{{ section_id }} .herotest-button__arrow,
+  #{{ section_id }} .herotest-menu-icon span {
+    transition: none;
+  }
+
+  #{{ section_id }} .herotest-button:hover {
+    transform: none;
+  }
+
+  #{{ section_id }} .herotest-button:hover .herotest-button__arrow,
+  #{{ section_id }} .herotest-button:focus-visible .herotest-button__arrow {
+    transform: none;
+  }
+
+}
+
+</style>
+
+
+<script>
+/* ==========================================================================
+   MOBILE HAMBURGER -> DAWN NATIVE DRAWER WIRING
+   ----------------------------------------------------------------------------
+   The custom hamburger in the top bar drives Dawn's own <header-drawer>:
+   - clicking it triggers the drawer's <summary>
+   - a MutationObserver keeps the button's open/X state in sync
+   - clicking anywhere outside the open drawer closes it
+   If the theme header section is removed, header-drawer will not exist and
+   the button stays inert — keep the header section in the template.
+   ========================================================================== */
+(() => {
+
+  const section = document.getElementById('{{ section_id }}');
+  if (!section) return;
+
+  const customButton = section.querySelector('.herotest-topbar__close');
+  if (!customButton) return;
+
+  /* Resolve Dawn's header drawer element (may be null on pages without it). */
+  const getHeaderDrawer = () => document.querySelector('header-drawer');
+
+  /* Reflect the drawer's open state onto the hamburger button. */
+  const updateButtonState = (isOpen) => {
+    customButton.classList.toggle('is-open', isOpen);
+    customButton.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    customButton.setAttribute('aria-label', isOpen ? 'Close menu' : 'Open menu');
+  };
+
+  /* Read the current open state from <details open> inside the drawer. */
+  const getDrawerState = () => {
+    const headerDrawer = getHeaderDrawer();
+    if (!headerDrawer) return false;
+
+    const details = headerDrawer.querySelector('details');
+    if (!details) return false;
+
+    return details.hasAttribute('open');
+  };
+
+  const syncButton = () => updateButtonState(getDrawerState());
+
+
+  /* ---- CUSTOM BUTTON CLICK -> trigger Shopify's own summary ------------ */
+  customButton.addEventListener('click', (event) => {
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const headerDrawer = getHeaderDrawer();
+    if (!headerDrawer) return;
+
+    const shopifyMenuButton = headerDrawer.querySelector('summary');
+    if (!shopifyMenuButton) return;
+
+    shopifyMenuButton.click();
+
+    /* Wait one tick for Shopify to toggle <details open>, then sync icon. */
+    setTimeout(syncButton, 50);
+
+  });
+
+
+  /* ---- OBSERVE DRAWER STATE --------------------------------------------- */
+  const observeShopifyDrawer = () => {
+
+    const headerDrawer = getHeaderDrawer();
+    if (!headerDrawer) return;
+
+    const details = headerDrawer.querySelector('details');
+    if (!details) return;
+
+    new MutationObserver(syncButton).observe(details, {
+      attributes: true,
+      attributeFilter: ['open']
+    });
+
+  };
+
+
+  /* ---- OUTSIDE CLICK CLOSES THE DRAWER ---------------------------------- */
+  document.addEventListener('click', (event) => {
+
+    const headerDrawer = getHeaderDrawer();
+    if (!headerDrawer) return;
+
+    const openDetails = headerDrawer.querySelector('details[open]');
+    if (!openDetails) return;
+
+    const drawer = openDetails.querySelector('.menu-drawer');
+    if (!drawer) return;
+
+    /* Click inside the drawer itself: ignore. */
+    if (drawer.contains(event.target)) return;
+
+    const shopifySummary = openDetails.querySelector('summary');
+
+    /* Click on Shopify's own summary: let Shopify handle it. */
+    if (shopifySummary && shopifySummary.contains(event.target)) return;
+
+    if (shopifySummary) shopifySummary.click();
+
+    updateButtonState(false);
+
+  });
+
+
+  /* Kick off on load: sync once, then keep watching for state changes. */
+  syncButton();
+  observeShopifyDrawer();
+
+})();
+</script>
+
+
+{% schema %}
+{
+  "name": "Herotest",
+  "tag": "section",
+  "class": "section-herotest",
+  "settings": [
+
+    {
+      "type": "header",
+      "content": "Top bar"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_top_bar",
+      "label": "Enable top bar",
+      "default": true
+    },
+    {
+      "type": "color",
+      "id": "top_bg",
+      "label": "Background color",
+      "default": "#f2f2f2"
+    },
+    {
+      "type": "color",
+      "id": "mobile_logo_row_bg",
+      "label": "Mobile logo row background",
+      "default": "#ffffff"
+    },
+    {
+      "type": "range",
+      "id": "top_padding_y",
+      "label": "Top and bottom padding",
+      "min": 0,
+      "max": 40,
+      "step": 1,
+      "unit": "px",
+      "default": 8
+    },
+    {
+      "type": "range",
+      "id": "topbar_max_width",
+      "label": "Maximum width",
+      "min": 1000,
+      "max": 2500,
+      "step": 25,
+      "unit": "px",
+      "default": 1450
+    },
+    {
+      "type": "range",
+      "id": "topbar_side_padding",
+      "label": "Side padding",
+      "min": 0,
+      "max": 150,
+      "step": 5,
+      "unit": "px",
+      "default": 40
+    },
+
+    {
+      "type": "header",
+      "content": "Top bar - Logo"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_logo",
+      "label": "Show logo",
+      "default": true
+    },
+    {
+      "type": "image_picker",
+      "id": "logo",
+      "label": "Logo"
+    },
+    {
+      "type": "url",
+      "id": "logo_link",
+      "label": "Logo link"
+    },
+    {
+      "type": "range",
+      "id": "logo_width",
+      "label": "Logo width - Desktop",
+      "min": 40,
+      "max": 500,
+      "step": 5,
+      "unit": "px",
+      "default": 180
+    },
+    {
+      "type": "range",
+      "id": "logo_width_tablet",
+      "label": "Logo width - Tablet",
+      "min": 40,
+      "max": 350,
+      "step": 5,
+      "unit": "px",
+      "default": 150
+    },
+    {
+      "type": "range",
+      "id": "logo_width_mobile",
+      "label": "Logo width - Mobile",
+      "min": 40,
+      "max": 250,
+      "step": 5,
+      "unit": "px",
+      "default": 130
+    },
+    {
+      "type": "range",
+      "id": "logo_text_size",
+      "label": "Fallback logo text size",
+      "min": 12,
+      "max": 60,
+      "step": 1,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "select",
+      "id": "logo_font_weight",
+      "label": "Fallback logo font weight",
+      "default": "700",
+      "options": [
+        { "value": "400", "label": "Regular" },
+        { "value": "500", "label": "Medium" },
+        { "value": "600", "label": "Semi bold" },
+        { "value": "700", "label": "Bold" }
+      ]
+    },
+    {
+      "type": "range",
+      "id": "logo_letter_spacing",
+      "label": "Fallback logo letter spacing",
+      "min": -2,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "default": 1
+    },
+
+    {
+      "type": "header",
+      "content": "Top bar - Center text"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_top_text",
+      "label": "Show center text",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "top_text",
+      "label": "Center text",
+      "default": "Find the ideal gift for your loved ones."
+    },
+    {
+      "type": "color",
+      "id": "top_text_color",
+      "label": "Text color",
+      "default": "#111111"
+    },
+    {
+      "type": "range",
+      "id": "top_text_size",
+      "label": "Text size - Desktop",
+      "min": 10,
+      "max": 40,
+      "step": 1,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "range",
+      "id": "top_text_size_tablet",
+      "label": "Text size - Tablet",
+      "min": 10,
+      "max": 30,
+      "step": 1,
+      "unit": "px",
+      "default": 14
+    },
+    {
+      "type": "range",
+      "id": "top_text_size_mobile",
+      "label": "Text size - Mobile",
+      "min": 10,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "default": 14
+    },
+
+    {
+      "type": "header",
+      "content": "Top bar - Button"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_top_button",
+      "label": "Show button",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "top_button_text",
+      "label": "Button text",
+      "default": "CHOOSE GIFT"
+    },
+    {
+      "type": "url",
+      "id": "top_button_link",
+      "label": "Button link"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_top_button_arrow",
+      "label": "Show arrow",
+      "default": true
+    },
+    {
+      "type": "color",
+      "id": "top_button_bg",
+      "label": "Button background",
+      "default": "#fff13b"
+    },
+    {
+      "type": "color",
+      "id": "top_button_text_color",
+      "label": "Button text color",
+      "default": "#111111"
+    },
+    {
+      "type": "color",
+      "id": "top_button_hover_bg",
+      "label": "Button hover background",
+      "default": "#111111"
+    },
+    {
+      "type": "color",
+      "id": "top_button_hover_text_color",
+      "label": "Button hover text color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "range",
+      "id": "top_button_font_size",
+      "label": "Button font size - Desktop",
+      "min": 10,
+      "max": 30,
+      "step": 1,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "range",
+      "id": "top_button_font_size_mobile",
+      "label": "Button font size - Mobile",
+      "min": 10,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "default": 14
+    },
+    {
+      "type": "range",
+      "id": "top_button_padding_x",
+      "label": "Horizontal padding - Desktop",
+      "min": 5,
+      "max": 120,
+      "step": 5,
+      "unit": "px",
+      "default": 40
+    },
+    {
+      "type": "range",
+      "id": "top_button_padding_y",
+      "label": "Vertical padding - Desktop",
+      "min": 4,
+      "max": 50,
+      "step": 1,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "range",
+      "id": "top_button_padding_x_mobile",
+      "label": "Horizontal padding - Mobile",
+      "min": 5,
+      "max": 80,
+      "step": 1,
+      "unit": "px",
+      "default": 18
+    },
+    {
+      "type": "range",
+      "id": "top_button_padding_y_mobile",
+      "label": "Vertical padding - Mobile",
+      "min": 4,
+      "max": 35,
+      "step": 1,
+      "unit": "px",
+      "default": 14
+    },
+    {
+      "type": "range",
+      "id": "top_button_width_mobile",
+      "label": "Button width - Mobile",
+      "min": 50,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 80
+    },
+    {
+      "type": "range",
+      "id": "top_button_min_width",
+      "label": "Minimum width - Desktop",
+      "min": 0,
+      "max": 500,
+      "step": 10,
+      "unit": "px",
+      "default": 220
+    },
+
+    {
+      "type": "header",
+      "content": "Hero background"
+    },
+    {
+      "type": "image_picker",
+      "id": "desktop_image",
+      "label": "Desktop background image"
+    },
+    {
+      "type": "image_picker",
+      "id": "mobile_image",
+      "label": "Mobile background image"
+    },
+    {
+      "type": "range",
+      "id": "desktop_image_position_x",
+      "label": "Desktop image position - Horizontal",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "default": 50
+    },
+    {
+      "type": "range",
+      "id": "desktop_image_position_y",
+      "label": "Desktop image position - Vertical",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "default": 50
+    },
+    {
+      "type": "range",
+      "id": "mobile_image_position_x",
+      "label": "Mobile image position - Horizontal",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "default": 50
+    },
+    {
+      "type": "range",
+      "id": "mobile_image_position_y",
+      "label": "Mobile image position - Vertical",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "default": 50
+    },
+
+    {
+      "type": "header",
+      "content": "Hero overlay"
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_overlay",
+      "label": "Enable overlay",
+      "default": false
+    },
+    {
+      "type": "color",
+      "id": "overlay_color",
+      "label": "Overlay color",
+      "default": "#000000"
+    },
+    {
+      "type": "range",
+      "id": "overlay_opacity",
+      "label": "Overlay opacity",
+      "min": 0,
+      "max": 90,
+      "step": 5,
+      "unit": "%",
+      "default": 20
+    },
+
+    {
+      "type": "header",
+      "content": "Hero layout"
+    },
+    {
+      "type": "range",
+      "id": "hero_max_width",
+      "label": "Content container maximum width",
+      "min": 1000,
+      "max": 2500,
+      "step": 50,
+      "unit": "px",
+      "default": 1450
+    },
+    {
+      "type": "range",
+      "id": "hero_min_height",
+      "label": "Hero height - Desktop",
+      "min": 300,
+      "max": 1400,
+      "step": 25,
+      "unit": "px",
+      "default": 850
+    },
+    {
+      "type": "range",
+      "id": "hero_min_height_tablet",
+      "label": "Hero height - Tablet",
+      "min": 300,
+      "max": 1200,
+      "step": 20,
+      "unit": "px",
+      "default": 700
+    },
+    {
+      "type": "range",
+      "id": "hero_min_height_mobile",
+      "label": "Hero height - Mobile",
+      "min": 300,
+      "max": 1100,
+      "step": 25,
+      "unit": "px",
+      "default": 650
+    },
+    {
+      "type": "select",
+      "id": "content_horizontal",
+      "label": "Content horizontal position",
+      "default": "left",
+      "options": [
+        { "value": "left", "label": "Left" },
+        { "value": "center", "label": "Center" },
+        { "value": "right", "label": "Right" }
+      ]
+    },
+    {
+      "type": "select",
+      "id": "content_vertical",
+      "label": "Content vertical position",
+      "default": "center",
+      "options": [
+        { "value": "top", "label": "Top" },
+        { "value": "center", "label": "Center" },
+        { "value": "bottom", "label": "Bottom" }
+      ]
+    },
+    {
+      "type": "range",
+      "id": "content_max_width",
+      "label": "Content maximum width",
+      "min": 200,
+      "max": 1200,
+      "step": 10,
+      "unit": "px",
+      "default": 650
+    },
+    {
+      "type": "range",
+      "id": "hero_padding_x",
+      "label": "Side padding - Desktop",
+      "min": 0,
+      "max": 250,
+      "step": 5,
+      "unit": "px",
+      "default": 70
+    },
+    {
+      "type": "range",
+      "id": "hero_padding_y",
+      "label": "Vertical padding - Desktop",
+      "min": 0,
+      "max": 300,
+      "step": 10,
+      "unit": "px",
+      "default": 80
+    },
+    {
+      "type": "range",
+      "id": "hero_padding_x_tablet",
+      "label": "Side padding - Tablet",
+      "min": 0,
+      "max": 180,
+      "step": 5,
+      "unit": "px",
+      "default": 40
+    },
+    {
+      "type": "range",
+      "id": "hero_padding_y_tablet",
+      "label": "Vertical padding - Tablet",
+      "min": 0,
+      "max": 250,
+      "step": 10,
+      "unit": "px",
+      "default": 60
+    },
+    {
+      "type": "range",
+      "id": "hero_padding_x_mobile",
+      "label": "Side padding - Mobile",
+      "min": 10,
+      "max": 80,
+      "step": 5,
+      "unit": "px",
+      "default": 25
+    },
+    {
+      "type": "range",
+      "id": "hero_padding_y_mobile",
+      "label": "Vertical padding - Mobile",
+      "min": 0,
+      "max": 200,
+      "step": 5,
+      "unit": "px",
+      "default": 60
+    },
+
+    {
+      "type": "header",
+      "content": "Mobile content position & background"
+    },
+    {
+      "type": "select",
+      "id": "mobile_content_position",
+      "label": "Content vertical position - Mobile",
+      "default": "top",
+      "options": [
+        { "value": "top", "label": "Top" },
+        { "value": "center", "label": "Center" },
+        { "value": "bottom", "label": "Bottom" }
+      ]
+    },
+    {
+      "type": "checkbox",
+      "id": "mobile_content_bg_enable",
+      "label": "Enable background for text & button",
+      "default": true
+    },
+    {
+      "type": "color",
+      "id": "mobile_content_bg_color",
+      "label": "Background color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "range",
+      "id": "mobile_content_bg_padding",
+      "label": "Background padding",
+      "min": 0,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "default": 24
+    },
+
+    {
+      "type": "header",
+      "content": "Hero heading"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_heading",
+      "label": "Show heading",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "The Gift Guide"
+    },
+    {
+      "type": "color",
+      "id": "heading_color",
+      "label": "Heading color",
+      "default": "#111111"
+    },
+    {
+      "type": "range",
+      "id": "heading_size_desktop",
+      "label": "Heading size - Desktop",
+      "min": 24,
+      "max": 150,
+      "step": 2,
+      "unit": "px",
+      "default": 70
+    },
+    {
+      "type": "range",
+      "id": "heading_size_tablet",
+      "label": "Heading size - Tablet",
+      "min": 20,
+      "max": 110,
+      "step": 2,
+      "unit": "px",
+      "default": 50
+    },
+    {
+      "type": "range",
+      "id": "heading_size_mobile",
+      "label": "Heading size - Mobile",
+      "min": 20,
+      "max": 90,
+      "step": 2,
+      "unit": "px",
+      "default": 42
+    },
+    {
+      "type": "select",
+      "id": "heading_font_weight",
+      "label": "Font weight",
+      "default": "700",
+      "options": [
+        { "value": "400", "label": "Regular" },
+        { "value": "500", "label": "Medium" },
+        { "value": "600", "label": "Semi bold" },
+        { "value": "700", "label": "Bold" },
+        { "value": "800", "label": "Extra bold" }
+      ]
+    },
+    {
+      "type": "range",
+      "id": "heading_line_height",
+      "label": "Line height",
+      "min": 0.8,
+      "max": 2,
+      "step": 0.1,
+      "default": 1.1
+    },
+    {
+      "type": "range",
+      "id": "heading_letter_spacing",
+      "label": "Letter spacing",
+      "min": -5,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+
+    {
+      "type": "header",
+      "content": "Hero paragraph"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_paragraph",
+      "label": "Show paragraph",
+      "default": true
+    },
+    {
+      "type": "textarea",
+      "id": "paragraph",
+      "label": "Paragraph",
+      "default": "Discover Joy: Your Ultimate Holiday Gift Destination.\nExplore our curated selection and find the perfect gifts to delight your loved ones this holiday season."
+    },
+    {
+      "type": "color",
+      "id": "paragraph_color",
+      "label": "Paragraph color",
+      "default": "#222222"
+    },
+    {
+      "type": "range",
+      "id": "paragraph_size_desktop",
+      "label": "Paragraph size - Desktop",
+      "min": 12,
+      "max": 40,
+      "step": 1,
+      "unit": "px",
+      "default": 22
+    },
+    {
+      "type": "range",
+      "id": "paragraph_size_tablet",
+      "label": "Paragraph size - Tablet",
+      "min": 12,
+      "max": 34,
+      "step": 1,
+      "unit": "px",
+      "default": 19
+    },
+    {
+      "type": "range",
+      "id": "paragraph_size_mobile",
+      "label": "Paragraph size - Mobile",
+      "min": 12,
+      "max": 30,
+      "step": 1,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "range",
+      "id": "paragraph_margin_top",
+      "label": "Spacing from heading - Desktop",
+      "min": 0,
+      "max": 100,
+      "step": 2,
+      "unit": "px",
+      "default": 30
+    },
+    {
+      "type": "range",
+      "id": "paragraph_margin_top_mobile",
+      "label": "Spacing from heading - Mobile",
+      "min": 0,
+      "max": 80,
+      "step": 2,
+      "unit": "px",
+      "default": 20
+    },
+    {
+      "type": "range",
+      "id": "paragraph_line_height",
+      "label": "Line height",
+      "min": 1,
+      "max": 2.5,
+      "step": 0.1,
+      "default": 1.5
+    },
+
+    {
+      "type": "header",
+      "content": "Hero button"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_hero_button",
+      "label": "Show button",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "hero_button_text",
+      "label": "Button text",
+      "default": "SHOP NOW"
+    },
+    {
+      "type": "url",
+      "id": "hero_button_link",
+      "label": "Button link"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_hero_button_arrow",
+      "label": "Show arrow",
+      "default": true
+    },
+    {
+      "type": "color",
+      "id": "hero_button_bg",
+      "label": "Button background",
+      "default": "#000000"
+    },
+    {
+      "type": "color",
+      "id": "hero_button_text_color",
+      "label": "Button text color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "hero_button_hover_bg",
+      "label": "Button hover background",
+      "default": "#ffeb3b"
+    },
+    {
+      "type": "color",
+      "id": "hero_button_hover_text_color",
+      "label": "Button hover text color",
+      "default": "#111111"
+    },
+    {
+      "type": "range",
+      "id": "hero_button_font_size",
+      "label": "Button font size - Desktop",
+      "min": 10,
+      "max": 30,
+      "step": 1,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "range",
+      "id": "hero_button_font_size_mobile",
+      "label": "Button font size - Mobile",
+      "min": 10,
+      "max": 26,
+      "step": 1,
+      "unit": "px",
+      "default": 15
+    },
+    {
+      "type": "range",
+      "id": "hero_button_padding_x",
+      "label": "Horizontal padding - Desktop",
+      "min": 10,
+      "max": 120,
+      "step": 5,
+      "unit": "px",
+      "default": 50
+    },
+    {
+      "type": "range",
+      "id": "hero_button_padding_y",
+      "label": "Vertical padding - Desktop",
+      "min": 5,
+      "max": 50,
+      "step": 1,
+      "unit": "px",
+      "default": 18
+    },
+    {
+      "type": "range",
+      "id": "hero_button_padding_x_mobile",
+      "label": "Horizontal padding - Mobile",
+      "min": 10,
+      "max": 90,
+      "step": 2,
+      "unit": "px",
+      "default": 30
+    },
+    {
+      "type": "range",
+      "id": "hero_button_padding_y_mobile",
+      "label": "Vertical padding - Mobile",
+      "min": 5,
+      "max": 40,
+      "step": 1,
+      "unit": "px",
+      "default": 15
+    },
+    {
+      "type": "range",
+      "id": "hero_button_min_width",
+      "label": "Minimum width - Desktop",
+      "min": 0,
+      "max": 500,
+      "step": 10,
+      "unit": "px",
+      "default": 250
+    },
+    {
+      "type": "range",
+      "id": "hero_button_min_width_mobile",
+      "label": "Minimum width - Mobile",
+      "min": 0,
+      "max": 400,
+      "step": 10,
+      "unit": "px",
+      "default": 200
+    },
+    {
+      "type": "range",
+      "id": "hero_button_margin_top",
+      "label": "Spacing above button - Desktop",
+      "min": 0,
+      "max": 150,
+      "step": 5,
+      "unit": "px",
+      "default": 35
+    },
+    {
+      "type": "range",
+      "id": "hero_button_margin_top_mobile",
+      "label": "Spacing above button - Mobile",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "px",
+      "default": 25
+    },
+
+    {
+      "type": "header",
+      "content": "Button animation"
+    },
+    {
+      "type": "range",
+      "id": "button_arrow_gap",
+      "label": "Text and arrow gap",
+      "min": 5,
+      "max": 60,
+      "step": 1,
+      "unit": "px",
+      "default": 25
+    },
+    {
+      "type": "range",
+      "id": "arrow_hover_distance",
+      "label": "Arrow movement on hover",
+      "min": 0,
+      "max": 30,
+      "step": 1,
+      "unit": "px",
+      "default": 8
+    },
+    {
+      "type": "range",
+      "id": "button_radius",
+      "label": "Button border radius",
+      "min": 0,
+      "max": 50,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+
+    {
+      "type": "header",
+      "content": "Bottom text bar"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_bottom_bar",
+      "label": "Show bottom bar",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "bottom_text",
+      "label": "Bottom text",
+      "default": "SUSTAINABLE, ETHICALLY MADE CLOTHES IN SIZES XXS TO 6XL"
+    },
+    {
+      "type": "color",
+      "id": "bottom_bg",
+      "label": "Background color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "bottom_text_color",
+      "label": "Text color",
+      "default": "#111111"
+    },
+    {
+      "type": "range",
+      "id": "bottom_padding_y",
+      "label": "Top and bottom padding",
+      "min": 0,
+      "max": 50,
+      "step": 1,
+      "unit": "px",
+      "default": 8
+    },
+    {
+      "type": "range",
+      "id": "bottom_side_padding",
+      "label": "Side padding",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "px",
+      "default": 20
+    },
+    {
+      "type": "range",
+      "id": "bottom_text_size",
+      "label": "Text size - Desktop",
+      "min": 8,
+      "max": 40,
+      "step": 1,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "range",
+      "id": "bottom_text_size_mobile",
+      "label": "Text size - Mobile",
+      "min": 8,
+      "max": 30,
+      "step": 1,
+      "unit": "px",
+      "default": 12
+    },
+    {
+      "type": "select",
+      "id": "bottom_font_weight",
+      "label": "Font weight",
+      "default": "500",
+      "options": [
+        { "value": "400", "label": "Regular" },
+        { "value": "500", "label": "Medium" },
+        { "value": "600", "label": "Semi bold" },
+        { "value": "700", "label": "Bold" }
+      ]
+    },
+    {
+      "type": "range",
+      "id": "bottom_letter_spacing",
+      "label": "Letter spacing",
+      "min": -2,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "select",
+      "id": "bottom_text_transform",
+      "label": "Text transform",
+      "default": "uppercase",
+      "options": [
+        { "value": "none", "label": "Normal" },
+        { "value": "uppercase", "label": "Uppercase" },
+        { "value": "lowercase", "label": "Lowercase" },
+        { "value": "capitalize", "label": "Capitalize" }
+      ]
+    }
+
+  ],
+
+  "presets": [
+    {
+      "name": "Advance Hero Banner"
+    }
+  ]
+}
+{% endschema %}
