@@ -249,9 +249,9 @@
           "settings": {
             "product": "dark-denim-top",
             "enable_hotspot": true,
-            "hotspot_x": 70,
-            "hotspot_y": 50,
-            "hotspot_size": 30,
+            "hotspot_x": 75,
+            "hotspot_y": 40,
+            "hotspot_size": 24,
             "hotspot_color": "#FFFFFF",
             "hotspot_icon_color": "#000",
             "hotspot_border_color": "#FFFFFF",
