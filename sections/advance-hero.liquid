@@ -213,8 +213,6 @@
     style="
       --ht-hero-height: {{ section.settings.hero_min_height }}px;
       --ht-mobile-content-justify: {{ mobile_content_justify }};
-      --ht-mobile-content-bg: {{ section.settings.mobile_content_bg_color }};
-      --ht-mobile-content-padding: {{ section.settings.mobile_content_bg_padding }}px;
     "
   >
 
@@ -272,11 +270,19 @@
           herotest-hero__content--horizontal-{{ section.settings.content_horizontal }}
           herotest-hero__content--vertical-{{ section.settings.content_vertical }}
         "
-        {{ hero_content_settings.shopify_attributes }}
         style="max-width: {{ section.settings.content_max_width }}px;"
       >
 
-        <div class="herotest-hero__content-inner">
+        <div
+          class="herotest-hero__content-inner{% if hero_content_settings.settings.content_background_enabled %} herotest-hero__content-inner--background{% endif %}{% if hero_content_settings.settings.use_content_text_color %} herotest-hero__content-inner--custom-text-color{% endif %}"
+          {{ hero_content_settings.shopify_attributes }}
+          style="
+            --ht-content-background: {{ hero_content_settings.settings.content_background_color }};
+            --ht-content-text-color: {{ hero_content_settings.settings.content_text_color }};
+            --ht-content-padding-x: {{ hero_content_settings.settings.content_padding_x }}px;
+            --ht-content-padding-y: {{ hero_content_settings.settings.content_padding_y }}px;
+          "
+        >
 
           {% comment %}
             2.3.1 HERO HEADING
@@ -799,6 +805,16 @@
   max-width: 100%;
 }
 
+#{{ section_id }} .herotest-hero__content-inner--background {
+  padding: var(--ht-content-padding-y) var(--ht-content-padding-x);
+  background-color: var(--ht-content-background);
+}
+
+#{{ section_id }} .herotest-hero__content-inner--custom-text-color .herotest-hero__heading,
+#{{ section_id }} .herotest-hero__content-inner--custom-text-color .herotest-hero__description {
+  color: var(--ht-content-text-color) !important;
+}
+
 
 /* ==========================================================================
    HERO BUTTON
@@ -901,16 +917,12 @@
     max-width: 100% !important;
   }
 
-  /* Inner wrapper sizes to its own content and, when enabled, gets the
-     background + negative-side-margin treatment so the color band hugs the
-     text/button block edge-to-edge while the page padding stays intact. */
   #{{ section_id }} .herotest-hero__content-inner {
-    {% if section.settings.mobile_content_bg_enable %}
-    background-color: var(--ht-mobile-content-bg);
+    {% if hero_content_settings.settings.content_background_enabled %}
     width: calc(100% + {{ section.settings.hero_padding_x_mobile | times: 2 }}px);
     margin-left: -{{ section.settings.hero_padding_x_mobile }}px;
     margin-right: -{{ section.settings.hero_padding_x_mobile }}px;
-    padding: var(--ht-mobile-content-padding) {{ section.settings.hero_padding_x_mobile }}px;
+    padding: {{ section.settings.content_padding_mobile }}px {{ section.settings.hero_padding_x_mobile }}px;
     box-sizing: border-box;
     {% endif %}
   }
@@ -1492,7 +1504,7 @@
     },
     {
       "type": "header",
-      "content": "Mobile content position & background"
+      "content": "Mobile content position"
     },
     {
       "type": "select",
@@ -1515,23 +1527,11 @@
       ]
     },
     {
-      "type": "checkbox",
-      "id": "mobile_content_bg_enable",
-      "label": "Enable background for text & button",
-      "default": true
-    },
-    {
-      "type": "color",
-      "id": "mobile_content_bg_color",
-      "label": "Background color",
-      "default": "#ffffff"
-    },
-    {
       "type": "range",
-      "id": "mobile_content_bg_padding",
-      "label": "Background padding",
+      "id": "content_padding_mobile",
+      "label": "Text and button background padding - Mobile",
       "min": 0,
-      "max": 60,
+      "max": 100,
       "step": 2,
       "unit": "px",
       "default": 24
@@ -2005,6 +2005,50 @@
           "step": 1,
           "unit": "px",
           "default": 0
+        },
+        {
+          "type": "checkbox",
+          "id": "content_background_enabled",
+          "label": "Show background behind text and button",
+          "default": false
+        },
+        {
+          "type": "color",
+          "id": "content_background_color",
+          "label": "Text and button background color",
+          "default": "#ffffff"
+        },
+        {
+          "type": "range",
+          "id": "content_padding_x",
+          "label": "Background horizontal padding",
+          "min": 0,
+          "max": 100,
+          "step": 2,
+          "unit": "px",
+          "default": 24
+        },
+        {
+          "type": "range",
+          "id": "content_padding_y",
+          "label": "Background vertical padding",
+          "min": 0,
+          "max": 100,
+          "step": 2,
+          "unit": "px",
+          "default": 24
+        },
+        {
+          "type": "checkbox",
+          "id": "use_content_text_color",
+          "label": "Use one text color for heading and description",
+          "default": false
+        },
+        {
+          "type": "color",
+          "id": "content_text_color",
+          "label": "Heading and description color",
+          "default": "#111111"
         },
         {
           "type": "checkbox",
