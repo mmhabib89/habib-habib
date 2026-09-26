@@ -60,7 +60,7 @@
           "settings": {
             "show_heading": true,
             "heading": "The Gift Guide",
-            "heading_color": "#111111",
+            "heading_color": "#000000",
             "heading_size_desktop": 70,
             "heading_size_tablet": 50,
             "heading_size_mobile": 42,
@@ -69,7 +69,7 @@
             "heading_letter_spacing": 0,
             "show_paragraph": true,
             "paragraph": "Discover Joy: Your Ultimate Holiday Gift Destination.\nExplore our curated selection and find the perfect gifts to delight your loved ones this holiday season.",
-            "paragraph_color": "#222222",
+            "paragraph_color": "#000000",
             "paragraph_size_desktop": 22,
             "paragraph_size_tablet": 19,
             "paragraph_size_mobile": 16,
