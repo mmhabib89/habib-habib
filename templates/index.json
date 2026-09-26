@@ -272,7 +272,7 @@
       "name": "Shoppable Image Grid",
       "settings": {
         "heading": "Tisso vision in the wild",
-        "heading_font": "libre_baskerville_n4",
+        "heading_font": "jost_n4",
         "background_color": "#ffffff",
         "heading_color": "#000",
         "image_ratio": "square",
