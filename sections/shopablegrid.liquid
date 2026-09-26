@@ -1,0 +1,2875 @@
+{% comment %}
+  ============================================================================
+  SHOPPABLE IMAGE GRID
+  ----------------------------------------------------------------------------
+  Shopify OS 2.0 section: a responsive image grid with "hotspot" buttons.
+  Clicking a hotspot opens a product popup that lets the customer choose
+  color / size / normal options and add the product to the cart via
+  Shopify's AJAX cart endpoint.
+
+  STRUCTURE
+  ---------
+  1. Grid ................. image tiles; each block = one image + one hotspot
+  2. Product popup ........ dialog with image, price, description, variant
+                             options, add-to-cart, and "view product" link
+  3. Theme editor support . blocks scroll into view when selected
+
+  BEHAVIOR NOTES
+  --------------
+  - Variant options are typed (color / size / normal) and rendered as
+    buttons, or as a custom dropdown for Size.
+  - When the selected option combo is "Black + Medium" AND a bundle product
+    is configured, that bundle variant is auto-added to the cart too.
+  - Colors are mapped to a hex swatch via getColorCode() (see script).
+  ============================================================================
+{% endcomment %}
+
+{%- liquid
+  # Unique element id per section instance. All scoped CSS rules and the
+  # script at the bottom target this id so multiple instances never clash.
+  assign section_id = 'ShoppableImageGrid-' | append: section.id
+
+  # Resolve the optional "Automatic bundle product" to a concrete variant id.
+  # When the customer picks Black + Medium (see shouldAddBundle in JS) this
+  # variant is added to the cart as a free/first bundle item.
+  assign bundle_product = section.settings.bundle_product
+  if bundle_product != blank
+    assign bundle_variant = bundle_product.selected_or_first_available_variant
+    if bundle_variant != blank and bundle_variant.available
+      assign bundle_variant_id = bundle_variant.id
+    else
+      assign bundle_variant_id = 0
+    endif
+  else
+    # No bundle configured -> pass 0 so the JS never appends a bundle item.
+    assign bundle_variant_id = 0
+  endif
+-%}
+
+<section
+  id="{{ section_id }}"
+  class="shoppable-grid-section"
+  style="
+    --sg-background: {{ section.settings.background_color }};
+    --sg-heading-color: {{ section.settings.heading_color }};
+    --sg-heading-size-desktop: {{ section.settings.heading_size_desktop }}px;
+    --sg-heading-size-tablet: {{ section.settings.heading_size_tablet }}px;
+    --sg-heading-size-mobile: {{ section.settings.heading_size_mobile }}px;
+    --sg-columns-desktop: {{ section.settings.columns_desktop }};
+    --sg-columns-tablet: {{ section.settings.columns_tablet }};
+    --sg-columns-mobile: {{ section.settings.columns_mobile }};
+    --sg-gap-desktop: {{ section.settings.gap_desktop }}px;
+    --sg-gap-tablet: {{ section.settings.gap_tablet }}px;
+    --sg-gap-mobile: {{ section.settings.gap_mobile }}px;
+    --sg-margin-top-desktop: {{ section.settings.margin_top_desktop }}px;
+    --sg-margin-bottom-desktop: {{ section.settings.margin_bottom_desktop }}px;
+    --sg-margin-top-tablet: {{ section.settings.margin_top_tablet }}px;
+    --sg-margin-bottom-tablet: {{ section.settings.margin_bottom_tablet }}px;
+    --sg-margin-top-mobile: {{ section.settings.margin_top_mobile }}px;
+    --sg-margin-bottom-mobile: {{ section.settings.margin_bottom_mobile }}px;
+    --sg-padding-top-desktop: {{ section.settings.padding_top_desktop }}px;
+    --sg-padding-bottom-desktop: {{ section.settings.padding_bottom_desktop }}px;
+    --sg-padding-top-tablet: {{ section.settings.padding_top_tablet }}px;
+    --sg-padding-bottom-tablet: {{ section.settings.padding_bottom_tablet }}px;
+    --sg-padding-top-mobile: {{ section.settings.padding_top_mobile }}px;
+    --sg-padding-bottom-mobile: {{ section.settings.padding_bottom_mobile }}px;
+    --sg-container-width: {{ section.settings.container_width }}px;
+    --sg-image-radius: {{ section.settings.image_radius }}px;
+  "
+  data-currency="{{ shop.currency }}"
+  data-cart-error-message="{{ 'sections.cart.cart_error' | t | escape }}"
+>
+
+  <div class="shoppable-grid-container">
+
+    {% comment %}
+      Optional section heading, rendered above the grid.
+    {% endcomment %}
+    {% if section.settings.heading != blank %}
+      <div class="shoppable-grid-header">
+        <h2 class="shoppable-grid-heading">
+          {{ section.settings.heading | escape }}
+        </h2>
+      </div>
+    {% endif %}
+
+    {% comment %}
+      Grid of image tiles. One tile per block.
+      Each tile = image (or placeholder) + optional hotspot button.
+    {% endcomment %}
+    <div class="shoppable-grid">
+      {% for block in section.blocks %}
+
+        {% comment %}
+          Resolve the tile image: block's own image wins, otherwise the
+          block's product featured image, otherwise nothing (placeholder).
+        {% endcomment %}
+        {% assign block_product = block.settings.product %}
+        {% if block.settings.image != blank %}
+          {% assign block_image = block.settings.image %}
+        {% elsif block_product != blank and block_product.featured_image != blank %}
+          {% assign block_image = block_product.featured_image %}
+        {% else %}
+          {% assign block_image = blank %}
+        {% endif %}
+
+        <div
+          class="shoppable-grid-item"
+          {{ block.shopify_attributes }}
+        >
+          <div
+            class="
+              shoppable-grid-media
+              shoppable-grid-media--{{ section.settings.image_ratio }}
+            "
+            style="
+              --hotspot-x: {{ block.settings.hotspot_x }}%;
+              --hotspot-y: {{ block.settings.hotspot_y }}%;
+              --hotspot-size: {{ block.settings.hotspot_size }}px;
+              --hotspot-background: {{ block.settings.hotspot_color }};
+              --hotspot-icon-color: {{ block.settings.hotspot_icon_color }};
+              --hotspot-border-color: {{ block.settings.hotspot_border_color }};
+              --hotspot-border-width: {{ block.settings.hotspot_border_width }}px;
+              --hotspot-shadow-opacity: {{ block.settings.hotspot_shadow_opacity | divided_by: 100.0 }};
+              --hotspot-hover-scale: {{ block.settings.hotspot_hover_scale | divided_by: 100.0 }};
+            "
+          >
+
+            {% comment %}
+              IMAGE — lazy-loaded product/uploaded image, or a placeholder.
+            {% endcomment %}
+            {% if block_image != blank %}
+              {{
+                block_image
+                | image_url: width: 1800
+                | image_tag:
+                  loading: 'lazy',
+                  widths: '400, 600, 800, 1000, 1200, 1500, 1800',
+                  sizes: '(min-width: 1200px) 25vw, (min-width: 750px) 33vw, 50vw',
+                  class: 'shoppable-grid-image',
+                  alt: block_image.alt
+                | default: block_product.title
+              }}
+            {% else %}
+              <div class="shoppable-grid-placeholder">
+                {{ 'image' | placeholder_svg_tag: 'placeholder-svg' }}
+              </div>
+            {% endif %}
+
+            {% comment %}
+              HOTSPOT — the click-to-open target. Product data is serialized
+              onto data-* attributes so the popup script can read it without
+              extra requests. Compare price / image are only emitted when the
+              product actually has them, keeping the DOM lean.
+            {% endcomment %}
+            {% if block_product != blank and block.settings.enable_hotspot %}
+              {%- capture product_variants_json -%}
+                {{ block_product.variants | json }}
+              {%- endcapture -%}
+              {%- capture product_options_json -%}
+                {{ block_product.options_with_values | json }}
+              {%- endcapture -%}
+              <button
+                type="button"
+                class="shoppable-hotspot"
+                aria-label="View {{ block_product.title | escape }}"
+                aria-expanded="false"
+                data-product-id="{{ block_product.id }}"
+                data-product-url="{{ block_product.url }}"
+                data-product-title="{{ block_product.title | escape }}"
+                data-product-price="{{ block_product.price | money_with_currency | escape }}"
+                data-product-compare-price="{% if block_product.compare_at_price > block_product.price %}{{ block_product.compare_at_price | money_with_currency | escape }}{% endif %}"
+                data-product-image="{% if block_product.featured_image != blank %}{{ block_product.featured_image | image_url: width: 1000 }}{% endif %}"
+                data-product-description="{{ block_product.description | escape }}"
+                data-product-variants="{{ product_variants_json | escape }}"
+                data-product-options="{{ product_options_json | escape }}"
+              >
+                <span class="shoppable-hotspot-icon">+</span>
+              </button>
+            {% endif %}
+
+          </div>
+        </div>
+
+      {% endfor %}
+    </div>
+
+  </div>
+
+  {% comment %}
+    ==========================================================================
+    PRODUCT POPUP — modal dialog opened by clicking a hotspot
+    ==========================================================================
+    Single shared instance per section; content is filled in by the script.
+    The card is role="dialog" + aria-modal and focus moves to the close
+    button on open (see openPopup in the script).
+  {% endcomment %}
+  <div
+    class="shoppable-product-popup"
+    aria-hidden="true"
+    data-shoppable-popup
+  >
+    <div
+      class="shoppable-product-popup-overlay"
+      data-popup-close
+    ></div>
+    <div
+      class="shoppable-product-popup-card"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Product details"
+    >
+      <!-- CLOSE BUTTON — also triggers on overlay click and Escape -->
+      <button
+        type="button"
+        class="shoppable-product-popup-close"
+        aria-label="Close"
+        data-popup-close
+      >
+        <span aria-hidden="true">×</span>
+      </button>
+
+      <div class="shoppable-product-popup-content">
+
+        {% comment %}
+          TOP AREA — image + title + price + description
+        {% endcomment %}
+        <div class="shoppable-product-popup-top">
+          <!-- PRODUCT IMAGE -->
+          <div class="shoppable-product-popup-image-wrap">
+            <img
+              alt=""
+              width="1000"
+              height="1000"
+              class="shoppable-product-popup-image"
+              data-popup-image
+            >
+          </div>
+          <!-- PRODUCT INFORMATION -->
+          <div class="shoppable-product-popup-info">
+            <h3
+              class="shoppable-product-popup-title"
+              data-popup-title
+            ></h3>
+            <div class="shoppable-product-popup-price">
+              <span
+                class="shoppable-product-popup-current-price"
+                data-popup-price
+              ></span>
+              <span
+                class="shoppable-product-popup-compare-price"
+                data-popup-compare
+              ></span>
+            </div>
+            <div
+              class="shoppable-product-popup-description"
+              data-popup-description
+            ></div>
+          </div>
+        </div>
+
+        {% comment %}
+          BOTTOM AREA — variant options + add-to-cart + view product
+        {% endcomment %}
+        <div class="shoppable-product-popup-bottom">
+          <div
+            class="shoppable-product-popup-variants"
+            data-popup-variants
+          ></div>
+          <!-- ADD TO CART — stays disabled until every option is selected -->
+          <button
+            type="button"
+            class="shoppable-product-popup-add"
+            data-popup-add-to-cart
+            disabled
+          >
+            <span data-add-text> CHOOSE OPTIONS </span>
+            <span
+              class="shoppable-product-popup-add-arrow"
+              aria-hidden="true"
+            >
+              →
+            </span>
+          </button>
+          <p class="shoppable-product-popup-status" data-popup-status role="status" aria-live="polite"></p>
+          <!-- VIEW PRODUCT -->
+          <a
+            href="#"
+            class="shoppable-product-popup-view"
+            data-popup-link
+          >
+            {{ section.settings.view_product_text | escape }}
+          </a>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+</section>
+
+
+<style>
+  {{ section.settings.heading_font | font_face: font_display: 'swap' }}
+
+  /* ==========================================================
+     SECTION
+     ========================================================== */
+  #{{ section_id }} {
+    width: 100%;
+    background: var(--sg-background);
+    margin-top: var(--sg-margin-top-desktop);
+    margin-bottom: var(--sg-margin-bottom-desktop);
+    padding-top: var(--sg-padding-top-desktop);
+    padding-bottom: var(--sg-padding-bottom-desktop);
+    box-sizing: border-box;
+  }
+
+  /* ==========================================================
+     CONTAINER
+     ========================================================== */
+  #{{ section_id }} .shoppable-grid-container {
+    width: 100%;
+    max-width: var(--sg-container-width);
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 20px;
+    padding-right: 20px;
+    box-sizing: border-box;
+  }
+
+  /* ==========================================================
+     HEADING
+     ========================================================== */
+  #{{ section_id }} .shoppable-grid-header {
+    width: 100%;
+    margin-bottom: 30px;
+  }
+
+  #{{ section_id }} .shoppable-grid-heading {
+    margin: 0;
+    color: var(--sg-heading-color);
+    font-family: "{{ section.settings.heading_font.family | escape }}", {{ section.settings.heading_font.fallback_families | escape }};
+    font-size: var(--sg-heading-size-desktop);
+    line-height: 1.2;
+    font-weight: 400;
+  }
+
+  /* ==========================================================
+     GRID
+     ========================================================== */
+  #{{ section_id }} .shoppable-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--sg-columns-desktop), minmax(0, 1fr));
+    gap: var(--sg-gap-desktop);
+    width: 100%;
+  }
+
+  #{{ section_id }} .shoppable-grid-item {
+    min-width: 0;
+    width: 100%;
+  }
+
+  /* ==========================================================
+     IMAGE
+     ========================================================== */
+  #{{ section_id }} .shoppable-grid-media {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    background: #f4f4f4;
+    border-radius: var(--sg-image-radius);
+  }
+
+  /* Fixed aspect ratios — the selected ratio is appended to the class name
+     (e.g. shoppable-grid-media--square) from the section settings. */
+  #{{ section_id }} .shoppable-grid-media--square {
+    aspect-ratio: 1 / 1;
+  }
+
+  #{{ section_id }} .shoppable-grid-media--portrait {
+    aspect-ratio: 4 / 5;
+  }
+
+  #{{ section_id }} .shoppable-grid-media--landscape {
+    aspect-ratio: 4 / 3;
+  }
+
+  #{{ section_id }} .shoppable-grid-media--wide {
+    aspect-ratio: 16 / 10;
+  }
+
+  #{{ section_id }} .shoppable-grid-image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+  }
+
+  /* ==========================================================
+     PLACEHOLDER — shown when a block has no image at all
+     ========================================================== */
+  #{{ section_id }} .shoppable-grid-placeholder {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f5f5f5;
+  }
+
+  #{{ section_id }} .shoppable-grid-placeholder .placeholder-svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* ==========================================================
+     HOTSPOT — circular "+" button positioned over the image.
+     Position/size/colors all come from per-block custom properties.
+     ========================================================== */
+  #{{ section_id }} .shoppable-hotspot {
+    position: absolute;
+    left: var(--hotspot-x);
+    top: var(--hotspot-y);
+
+    width: var(--hotspot-size);
+    height: var(--hotspot-size);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    /* Center the circle exactly on the x/y coordinates */
+    transform: translate(-50%, -50%);
+
+    padding: 0;
+    margin: 0;
+
+    border: var(--hotspot-border-width) solid var(--hotspot-border-color);
+    border-radius: 50%;
+
+    background: var(--hotspot-background);
+    color: var(--hotspot-icon-color);
+
+    cursor: pointer;
+    z-index: 10;
+
+    appearance: none;
+    -webkit-appearance: none;
+    box-sizing: border-box;
+
+    box-shadow: 0 2px 10px rgba(0, 0, 0, var(--hotspot-shadow-opacity));
+
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+
+  #{{ section_id }} .shoppable-hotspot:hover {
+    transform: translate(-50%, -50%) scale(var(--hotspot-hover-scale));
+    box-shadow: 0 5px 18px
+      rgba(0, 0, 0, calc(var(--hotspot-shadow-opacity) + 0.1));
+  }
+
+  #{{ section_id }} .shoppable-hotspot:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 3px;
+  }
+
+  #{{ section_id }} .shoppable-hotspot-icon {
+    display: block;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: calc(var(--hotspot-size) * 0.55);
+    line-height: 1;
+    font-weight: 300;
+    transform: translateY(-1px); /* optical centering of the + glyph */
+    pointer-events: none;
+  }
+
+  /* ==========================================================
+     POPUP OVERLAY
+     ========================================================== */
+  #{{ section_id }} .shoppable-product-popup {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      opacity 0.25s ease,
+      visibility 0.25s ease;
+    box-sizing: border-box;
+  }
+
+  /* .is-active is added by the script to reveal the popup. */
+  #{{ section_id }} .shoppable-product-popup.is-active {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  #{{ section_id }} .shoppable-product-popup-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    cursor: pointer;
+  }
+
+  /* ==========================================================
+     POPUP CARD
+     ========================================================== */
+  #{{ section_id }} .shoppable-product-popup-card {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 560px;
+    max-height: calc(100vh - 40px);
+    background: #ffffff;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.24);
+    transform: translateY(12px) scale(0.985);
+    transition: transform 0.25s ease;
+    box-sizing: border-box;
+    scrollbar-width: thin;
+  }
+
+  /* Slight scale-up "pop" when the popup becomes active. */
+  #{{ section_id }} .shoppable-product-popup.is-active .shoppable-product-popup-card {
+    transform: translateY(0) scale(1);
+  }
+
+  /* ==========================================================
+     CLOSE BUTTON
+     ========================================================== */
+  #{{ section_id }} .shoppable-product-popup-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 25px;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 20;
+    box-shadow: none;
+    appearance: none;
+    -webkit-appearance: none;
+    transition:
+      transform 0.18s ease,
+      opacity 0.18s ease;
+  }
+
+  #{{ section_id }} .shoppable-product-popup-close:hover {
+    background: transparent;
+    box-shadow: none;
+    transform: rotate(90deg);
+  }
+
+  #{{ section_id }} .shoppable-product-popup-close:focus-visible {
+    background: transparent;
+    outline: 2px solid #000;
+    outline-offset: 2px;
+  }
+
+  /* ==========================================================
+     POPUP CONTENT
+     ========================================================== */
+  #{{ section_id }} .shoppable-product-popup-content {
+    width: 100%;
+    padding: 15px;
+    box-sizing: border-box;
+  }
+
+  /* ==========================================================
+     TOP PRODUCT AREA — 40% image / 60% info two-column grid
+     ========================================================== */
+  #{{ section_id }} .shoppable-product-popup-top {
+    display: grid;
+    grid-template-columns:
+      minmax(0, 40%)
+      minmax(0, 60%);
+    width: 100%;
+    align-items: start;
+  }
+
+  /* ==========================================================
+     PRODUCT IMAGE
+     ========================================================== */
+  #{{ section_id }} .shoppable-product-popup-image-wrap {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background: #f5f5f5;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+
+  #{{ section_id }} .shoppable-product-popup-image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.35s ease;
+  }
+
+  #{{ section_id }}
+    .shoppable-product-popup-image-wrap:hover
+    .shoppable-product-popup-image {
+    transform: scale(1.015);
+  }
+
+  /* ==========================================================
+     PRODUCT INFORMATION
+     ========================================================== */
+  #{{ section_id }} .shoppable-product-popup-info {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 15px 15px 10px;
+  }
+
+  /* ==========================================================
+     TITLE
+     ========================================================== */
+  #{{ section_id }} .shoppable-product-popup-title {
+    margin: 0 0 13px;
+    padding-right: 25px; /* keeps long titles clear of the close button */
+    color: #000;
+    font-family: "{{ section.settings.heading_font.family | escape }}", {{ section.settings.heading_font.fallback_families | escape }};
+    font-size: 25px;
+    line-height: 1.25;
+    font-weight: 500;
+    letter-spacing: -0.015em;
+    overflow-wrap: anywhere;
+  }
+
+  /* ==========================================================
+     PRICE
+     ========================================================== */
+  #{{ section_id }} .shoppable-product-popup-price {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 9px;
+    margin-bottom: 20px;
+  }
+
+  #{{ section_id }} .shoppable-product-popup-current-price {
+    color: #000;
+    font-size: 16px;
+    line-height: 1.3;
+  }
+
+  #{{ section_id }} .shoppable-product-popup-compare-price {
+    color: #8a8a8a;
+    font-size: 14px;
+    line-height: 1.3;
+    text-decoration: line-through;
+  }
+
+  /* ==========================================================
+     DESCRIPTION — scrollable region for long product copy
+     ========================================================== */
+  #{{ section_id }} .shoppable-product-popup-description {
+    max-height: 145px;
+    overflow-y: auto;
+    margin: 0;
+    color: #555555;
+    font-size: 14px;
+    line-height: 1.65;
+    scrollbar-width: thin;
+  }
+
+  #{{ section_id }} .shoppable-product-popup-description p {
+    margin: 0 0 9px;
+  }
+
+  #{{ section_id }} .shoppable-product-popup-description p:last-child {
+    margin-bottom: 0;
+  }
+
+  #{{ section_id }} .shoppable-product-popup-description ul,
+  #{{ section_id }} .shoppable-product-popup-description ol {
+    margin: 0 0 10px;
+    padding-left: 20px;
+  }
+
+  /* ==========================================================
+     BOTTOM OPTIONS SECTION
+     ========================================================== */
+  #{{ section_id }} .shoppable-product-popup-bottom {
+    width: 100%;
+    padding: 15px 0 0;
+    background: #ffffff;
+    box-sizing: border-box;
+  }
+
+  /* ==========================================================
+     VARIANT WRAPPER
+     ========================================================== */
+  #{{ section_id }} .shoppable-product-popup-variants {
+    width: 100%;
+    margin: 0;
+  }
+
+  /* ==========================================================
+     VARIANT GROUP
+     ========================================================== */
+  #{{ section_id }} .shoppable-variant-group {
+    width: 100%;
+    margin: 0 0 20px;
+  }
+
+  #{{ section_id }} .shoppable-variant-group:last-child {
+    margin-bottom: 0;
+  }
+
+  /* ==========================================================
+     VARIANT LABEL
+     ========================================================== */
+  #{{ section_id }} .shoppable-variant-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 0 0 9px;
+    color: #000;
+    font-size: 11px;
+    line-height: 1.3;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  /* ==========================================================
+     VARIANT OPTIONS
+     ========================================================== */
+  #{{ section_id }} .shoppable-variant-options {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 8px;
+  }
+
+  /* ==========================================================
+     COLOR OPTION — pill with a 10px color swatch on the left
+     edge (drawn with a box-shadow inset, see ::before divider)
+     ========================================================== */
+  #{{ section_id }} .shoppable-color-option {
+    --color-code: #e5e5e5;
+    /* Fallback above: overridden inline by the script with the real swatch */
+
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+
+    min-width: 110px;
+    min-height: 44px;
+    padding: 8px 12px;
+
+    border: 1px solid #000;
+
+    background: #ffffff;
+    color: #000000;
+    text-align: left;
+    cursor: pointer;
+
+    box-sizing: border-box;
+    appearance: none;
+    -webkit-appearance: none;
+
+    /* Left color bar sits INSIDE the box, at the very start */
+    box-shadow: inset 10px 0 0 var(--color-code);
+
+    transition:
+      background-color 0.18s ease,
+      color 0.18s ease,
+      opacity 0.18s ease;
+  }
+
+  #{{ section_id }} .shoppable-color-option::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 10px;
+    border-right: 1px solid #000;
+    box-sizing: border-box;
+    pointer-events: none;
+  }
+
+  /* ==========================================================
+     HOVER
+     ========================================================== */
+  #{{ section_id }} .shoppable-color-option:hover:not(:disabled) {
+    background: #000000;
+    color: #ffffff;
+    /* Keep the color border inside on hover */
+    box-shadow: inset 10px 0 0 var(--color-code);
+  }
+
+  /* ==========================================================
+     SELECTED
+     ========================================================== */
+  #{{ section_id }} .shoppable-color-option.is-selected {
+    background: #000000;
+    color: #ffffff;
+    box-shadow:
+      inset 10px 0 0 var(--color-code),
+      0 0 0 1px #000000;
+  }
+
+  /* ==========================================================
+     COLOR NAME
+     ========================================================== */
+  #{{ section_id }} .shoppable-color-name {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    padding-left: 8px;
+    font-size: 13px;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ==========================================================
+     NORMAL OPTION — plain button for any non-color, non-size option
+     ========================================================== */
+  #{{ section_id }} .shoppable-normal-option {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 106px;
+    min-height: 44px;
+    padding: 10px 15px;
+    border: 1px solid #dddddd;
+    border-radius: 2px;
+    background: #ffffff;
+    color: #000;
+    cursor: pointer;
+    box-sizing: border-box;
+    transition:
+      border-color 0.18s ease,
+      background-color 0.18s ease,
+      color 0.18s ease,
+      opacity 0.18s ease;
+  }
+
+  #{{ section_id }} .shoppable-normal-option:hover:not(:disabled) {
+    border-color: #000;
+  }
+
+  #{{ section_id }} .shoppable-normal-option.is-selected {
+    border-color: #000;
+    background: #000;
+    color: #ffffff;
+  }
+
+  #{{ section_id }} .shoppable-option-name {
+    font-size: 13px;
+    line-height: 1.3;
+  }
+
+  /* ==========================================================
+     UNAVAILABLE OPTIONS — dimmed and struck through
+     ========================================================== */
+  #{{ section_id }} .shoppable-variant-option:disabled {
+    opacity: 0.32;
+    cursor: not-allowed;
+  }
+
+  #{{ section_id }} .shoppable-variant-option.is-unavailable {
+    text-decoration: line-through;
+  }
+
+  /* ==========================================================
+     SIZE DROPDOWN — custom select built from buttons (no native <select>)
+     ========================================================== */
+  #{{ section_id }} .shoppable-size-dropdown {
+    position: relative;
+    width: 220px;
+    max-width: 100%;
+  }
+
+  #{{ section_id }} .shoppable-size-dropdown-trigger {
+    position: relative;
+    width: 220px;
+    max-width: 100%;
+    min-height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    padding: 0 15px;
+    border: 1px solid #d7d7d7;
+    border-radius: 2px;
+    background: #ffffff;
+    color: #000;
+    font-size: 13px;
+    line-height: 1.3;
+    text-align: left;
+    cursor: pointer;
+    box-sizing: border-box;
+    appearance: none;
+    -webkit-appearance: none;
+    transition:
+      border-color 0.18s ease,
+      box-shadow 0.18s ease;
+  }
+
+  #{{ section_id }} .shoppable-size-dropdown-trigger:hover {
+    border-color: #000;
+  }
+
+  #{{ section_id }} .shoppable-size-dropdown-trigger:focus-visible {
+    outline: none;
+    border-color: #000;
+    box-shadow: 0 0 0 2px rgba(17, 17, 17, 0.1);
+  }
+
+  #{{ section_id }} .shoppable-size-dropdown.is-open .shoppable-size-dropdown-trigger {
+    border-color: #000;
+  }
+
+  #{{ section_id }} .shoppable-size-dropdown-current {
+    flex: 1;
+    min-width: 0;
+    color: #000;
+    font-size: 13px;
+    line-height: 1.3;
+  }
+
+  /* .is-placeholder = no size chosen yet -> grey prompt text */
+  #{{ section_id }} .shoppable-size-dropdown-current.is-placeholder {
+    color: #777777;
+  }
+
+  /* Chevron drawn with borders (rotates when open) */
+  #{{ section_id }} .shoppable-size-dropdown-arrow {
+    flex: 0 0 auto;
+    width: 8px;
+    height: 8px;
+    border-right: 1.5px solid #000;
+    border-bottom: 1.5px solid #000;
+    transform: rotate(45deg) translateY(-2px);
+    transition: transform 0.18s ease;
+  }
+
+  #{{ section_id }} .shoppable-size-dropdown.is-open .shoppable-size-dropdown-arrow {
+    transform: rotate(225deg) translateY(-1px);
+  }
+
+  /* ==========================================================
+     DROPDOWN MENU
+     ========================================================== */
+  #{{ section_id }} .shoppable-size-dropdown-menu {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 5px);
+    z-index: 50;
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 5px;
+    border: 1px solid #d7d7d7;
+    border-radius: 2px;
+    background: #ffffff;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(-5px);
+    transition:
+      opacity 0.15s ease,
+      visibility 0.15s ease,
+      transform 0.15s ease;
+  }
+
+  #{{ section_id }} .shoppable-size-dropdown.is-open .shoppable-size-dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+
+  /* ==========================================================
+     DROPDOWN OPTION
+     ========================================================== */
+  #{{ section_id }} .shoppable-size-dropdown-option {
+    width: 100%;
+    min-height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 11px;
+    border: 0;
+    border-radius: 1px;
+    background: #ffffff;
+    color: #000;
+    font-size: 13px;
+    line-height: 1.3;
+    text-align: left;
+    cursor: pointer;
+    box-sizing: border-box;
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease;
+  }
+
+  #{{ section_id }} .shoppable-size-dropdown-option:hover:not(:disabled) {
+    background: #000;
+    color: #ffffff;
+  }
+
+  #{{ section_id }} .shoppable-size-dropdown-option.is-selected {
+    background: #000;
+    color: #ffffff;
+  }
+
+  #{{ section_id }} .shoppable-size-dropdown-option:disabled {
+    color: #999999;
+    cursor: not-allowed;
+    text-decoration: line-through;
+  }
+
+  #{{ section_id }} .shoppable-size-dropdown-option-check {
+    opacity: 0;
+    font-size: 12px;
+  }
+
+  /* Reveal the checkmark only on the selected option */
+  #{{ section_id }}
+    .shoppable-size-dropdown-option.is-selected
+    .shoppable-size-dropdown-option-check {
+    opacity: 1;
+  }
+
+  /* ==========================================================
+     ADD TO CART
+     ========================================================== */
+  #{{ section_id }} .shoppable-product-popup-add {
+    min-width: 220px;
+    min-height: 54px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    padding: 12px 20px;
+    margin: 30px 0 12px;
+    border: 0;
+    border-radius: 2px;
+    background: #000;
+    color: #fff;
+    font-size: 13px;
+    line-height: 1.3;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    box-sizing: border-box;
+    appearance: none;
+    -webkit-appearance: none;
+    transition:
+      opacity 0.2s ease,
+      transform 0.2s ease;
+  }
+
+  /* TEXT */
+  #{{ section_id }} .shoppable-product-popup-add [data-add-text] {
+    flex: 0 0 auto;
+    text-align: center;
+  }
+
+  /* ARROW */
+  #{{ section_id }} .shoppable-product-popup-add-arrow {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    font-size: 19px;
+    line-height: 1;
+    transition: transform 0.2s ease;
+  }
+
+  /* HOVER */
+  #{{ section_id }} .shoppable-product-popup-add:hover:not(:disabled) {
+    opacity: 0.88;
+    transform: translateY(-1px);
+  }
+
+  #{{ section_id }}
+    .shoppable-product-popup-add:hover:not(:disabled)
+    .shoppable-product-popup-add-arrow {
+    transform: translateX(4px);
+  }
+
+  /* DISABLED — no option combo selected yet */
+  #{{ section_id }} .shoppable-product-popup-add:disabled {
+    opacity: 0.42;
+    cursor: not-allowed;
+  }
+
+  /* LOADING — request in flight (set by the script while adding) */
+  #{{ section_id }} .shoppable-product-popup-add.is-loading {
+    pointer-events: none;
+    opacity: 0.65;
+  }
+
+  /* ==========================================================
+     VIEW PRODUCT
+     ========================================================== */
+  #{{ section_id }} .shoppable-product-popup-view {
+    display: block;
+    width: 100%;
+    margin-top: 15px;
+    color: #000;
+    font-size: 11px;
+    line-height: 1.3;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-align: center;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+
+  #{{ section_id }} .shoppable-product-popup-status {
+    min-height: 1.4em;
+    margin: 8px 0 0;
+    color: #b42318;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  #{{ section_id }} .shoppable-product-popup-view:hover {
+    opacity: 0.6;
+  }
+
+  /* ==========================================================
+     TABLET — 990px and below
+     ========================================================== */
+  @media screen and (min-width: 750px) and (max-width: 989px) {
+    #{{ section_id }} {
+      margin-top: var(--sg-margin-top-tablet);
+      margin-bottom: var(--sg-margin-bottom-tablet);
+      padding-top: var(--sg-padding-top-tablet);
+      padding-bottom: var(--sg-padding-bottom-tablet);
+    }
+
+    #{{ section_id }} .shoppable-grid {
+      grid-template-columns: repeat(var(--sg-columns-tablet), minmax(0, 1fr));
+      gap: var(--sg-gap-tablet);
+    }
+
+    #{{ section_id }} .shoppable-grid-heading {
+      font-size: var(--sg-heading-size-tablet);
+    }
+
+    /* POPUP */
+    #{{ section_id }} .shoppable-product-popup {
+      padding: 20px;
+    }
+
+    #{{ section_id }} .shoppable-product-popup-card {
+      max-width: 700px;
+      max-height: calc(100vh - 40px);
+    }
+
+    #{{ section_id }} .shoppable-product-popup-content {
+      padding: 20px;
+    }
+
+    #{{ section_id }} .shoppable-product-popup-info {
+      padding: 20px 25px 10px;
+    }
+
+    #{{ section_id }} .shoppable-product-popup-bottom {
+      padding-top: 20px;
+    }
+
+    #{{ section_id }} .shoppable-product-popup-title {
+      font-size: 22px;
+    }
+  }
+
+  /* ==========================================================
+     MOBILE — 750px and below
+     ========================================================== */
+  @media screen and (max-width: 749px) {
+
+    #{{ section_id }} {
+      margin-top: var(--sg-margin-top-mobile);
+      margin-bottom: var(--sg-margin-bottom-mobile);
+      padding-top: var(--sg-padding-top-mobile);
+      padding-bottom: var(--sg-padding-bottom-mobile);
+    }
+
+    #{{ section_id }} .shoppable-grid-container {
+      padding-left: 15px;
+      padding-right: 15px;
+    }
+
+    #{{ section_id }} .shoppable-grid {
+      grid-template-columns: repeat(var(--sg-columns-mobile), minmax(0, 1fr));
+      gap: var(--sg-gap-mobile);
+    }
+
+    #{{ section_id }} .shoppable-grid-heading {
+      font-size: var(--sg-heading-size-mobile);
+      text-align: center;
+    }
+
+    #{{ section_id }} .shoppable-grid-header {
+      margin-bottom: 20px;
+    }
+
+    /* ==========================================================
+       MOBILE POPUP
+       ========================================================== */
+    #{{ section_id }} .shoppable-product-popup {
+      align-items: center;
+      padding: 10px;
+    }
+
+    #{{ section_id }} .shoppable-product-popup-card {
+      width: 100%;
+      max-width: 100%;
+      max-height: calc(100vh - 20px);
+      -webkit-overflow-scrolling: touch;
+    }
+
+    #{{ section_id }} .shoppable-product-popup-content {
+      padding: 12px;
+    }
+
+    /* ==========================================================
+       MOBILE IMAGE
+       ========================================================== */
+    #{{ section_id }} .shoppable-product-popup-image-wrap {
+      width: 100%;
+      max-width: 100%;
+      aspect-ratio: 1 / 1;
+      max-height: 300px;
+      margin: 0 auto;
+      overflow: hidden;
+    }
+
+    /* ==========================================================
+       MOBILE INFO
+       ========================================================== */
+    #{{ section_id }} .shoppable-product-popup-info {
+      width: 100%;
+      padding: 10px 10px 0;
+      box-sizing: border-box;
+    }
+
+    #{{ section_id }} .shoppable-product-popup-title {
+      font-size: 16px;
+      margin-bottom: 9px;
+    }
+
+    #{{ section_id }} .shoppable-product-popup-price {
+      margin-bottom: 14px;
+    }
+
+    #{{ section_id }} .shoppable-product-popup-current-price {
+      font-size: 16px;
+    }
+
+    #{{ section_id }} .shoppable-product-popup-description {
+      max-height: 110px;
+      font-size: 12px;
+      line-height: 1.3;
+      font-weight: light;
+    }
+
+    /* ==========================================================
+       MOBILE BOTTOM
+       ========================================================== */
+    #{{ section_id }} .shoppable-product-popup-bottom {
+      width: 100%;
+      padding: 10px 6px 8px;
+    }
+
+    #{{ section_id }} .shoppable-variant-group {
+      margin-bottom: 15px;
+    }
+
+    #{{ section_id }} .shoppable-variant-label {
+      margin-bottom: 8px;
+    }
+
+    /* ==========================================================
+       MOBILE COLOR — options grow to share the full row width
+       ========================================================== */
+    #{{ section_id }} .shoppable-color-option {
+      flex: 1 1 0;
+      width: 0;
+      min-width: 0;
+      max-width: none;
+      min-height: 50px;
+      padding: 8px 12px;
+
+      /* Full outer border */
+      border: 1px solid #000;
+
+      background: #ffffff;
+      box-sizing: border-box;
+    }
+
+    #{{ section_id }} .shoppable-color-name {
+      font-size: 12px;
+    }
+
+    #{{ section_id }} .shoppable-normal-option {
+      width: 100%;
+      min-width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+
+    #{{ section_id }} .shoppable-variant-options {
+      width: 100%;
+      display: flex;
+      gap: 8px;
+    }
+
+    /* ==========================================================
+       MOBILE SIZE
+       ========================================================== */
+    #{{ section_id }} .shoppable-size-dropdown {
+      width: 100%;
+      max-width: 100%;
+    }
+
+    #{{ section_id }} .shoppable-size-dropdown-trigger {
+      width: 100%;
+    }
+
+    #{{ section_id }} .shoppable-size-dropdown-menu {
+      max-height: 180px;
+    }
+
+    /* ==========================================================
+       MOBILE ADD
+       ========================================================== */
+    #{{ section_id }} .shoppable-product-popup-add {
+      min-height: 50px;
+      margin-top: 22px;
+      padding: 12px 18px;
+      display: block;
+      width: 100%;
+    }
+
+    /* ==========================================================
+       MOBILE CLOSE
+       ========================================================== */
+    #{{ section_id }} .shoppable-product-popup-close {
+      top: 8px;
+      right: 8px;
+      width: 34px;
+      height: 34px;
+      font-size: 22px;
+    }
+  }
+
+  /* ==========================================================
+     SMALL MOBILE — very narrow screens (390px and under)
+     ========================================================== */
+  @media screen and (max-width: 390px) {
+
+    #{{ section_id }} .shoppable-product-popup-top {
+      display: flex;
+    }
+
+    #{{ section_id }} .shoppable-product-popup {
+      padding: 6px;
+    }
+
+    #{{ section_id }} .shoppable-product-popup-card {
+      max-height: calc(100vh - 12px);
+    }
+
+    #{{ section_id }} .shoppable-product-popup-content {
+      padding: 10px;
+    }
+
+    #{{ section_id }} .shoppable-product-popup-image-wrap {
+      max-height: 260px;
+    }
+
+    #{{ section_id }} .shoppable-color-option {
+      width: 110px;
+      min-width: 110px;
+    }
+  }
+
+  /* ==========================================================
+     BODY LOCK — intentionally NOT scoped to the section id.
+     When the popup is open we must lock the whole page's scroll,
+     so this rule lives on `body` globally.
+     ========================================================== */
+  body.shoppable-popup-open {
+    overflow: hidden;
+  }
+</style>
+
+
+<script>
+  (function () {
+    'use strict';
+
+    /* ==========================================================
+       SECTION — bail out early if anything core is missing
+       ========================================================== */
+    const section = document.getElementById('{{ section_id }}');
+    if (!section) {
+      return;
+    }
+
+    /* ==========================================================
+       POPUP ELEMENTS — all read from data-* hooks above
+       ========================================================== */
+    const popup = section.querySelector('[data-shoppable-popup]');
+    if (!popup) {
+      return;
+    }
+    const popupImage = section.querySelector('[data-popup-image]');
+    const popupTitle = section.querySelector('[data-popup-title]');
+    const popupPrice = section.querySelector('[data-popup-price]');
+    const popupCompare = section.querySelector('[data-popup-compare]');
+    const popupDescription = section.querySelector('[data-popup-description]');
+    const popupVariants = section.querySelector('[data-popup-variants]');
+    const popupStatus = section.querySelector('[data-popup-status]');
+    const popupLink = section.querySelector('[data-popup-link]');
+    const addToCartButton = section.querySelector('[data-popup-add-to-cart]');
+    const addText = section.querySelector('[data-add-text]');
+    const hotspots = section.querySelectorAll('.shoppable-hotspot');
+    const closeButtons = section.querySelectorAll('[data-popup-close]');
+
+    /* ==========================================================
+       STATE
+       ========================================================== */
+    let currentProduct = null;
+    let currentVariants = [];
+    let currentOptions = [];
+    let selectedOptions = {};
+    let lastFocusedElement = null;
+    let currentSizeDropdown = null;
+
+    /* ==========================================================
+       BUNDLE PRODUCT — JSON-encoded variant id from Liquid above
+       ========================================================== */
+    const bundleVariantId = Number({{ bundle_variant_id | default: 0 }});
+    const currencyCode = section.dataset.currency || 'USD';
+
+    /* ==========================================================
+       COLOR MAP — named colors -> hex, used to draw the color swatches
+       ========================================================== */
+    const colorMap = {
+      black: '#000000',
+      white: '#ffffff',
+      blue: '#0000ff',
+      red: '#ff0000',
+      green: '#008000',
+      yellow: '#ffff00',
+      orange: '#ffa500',
+      purple: '#800080',
+      pink: '#ffc0cb',
+      brown: '#8b4513',
+      grey: '#808080',
+      gray: '#808080',
+      beige: '#f5f5dc',
+      cream: '#fffdd0',
+      navy: '#000080',
+      maroon: '#800000',
+      olive: '#808000',
+      silver: '#c0c0c0',
+      gold: '#ffd700',
+      khaki: '#c3b091',
+      tan: '#d2b48c',
+      teal: '#008080',
+      cyan: '#00ffff',
+      magenta: '#ff00ff',
+      lavender: '#e6e6fa',
+      burgundy: '#800020',
+      charcoal: '#36454f',
+    };
+
+    /* ==========================================================
+       GET COLOR CODE — resolve a color option name to a hex value.
+       Rules: hex value passes through, hex found inside the string
+       is extracted, known names use the map, else a default grey.
+       ========================================================== */
+    function getColorCode(colorName) {
+      if (!colorName) {
+        return '#e5e5e5';
+      }
+      const value = String(colorName).trim();
+      if (/^#[0-9a-f]{3,8}$/i.test(value)) {
+        return value;
+      }
+      const hexMatch = value.match(/#[0-9a-f]{3,8}/i);
+      if (hexMatch) {
+        return hexMatch[0];
+      }
+      const normalized = value.toLowerCase();
+      if (colorMap[normalized]) {
+        return colorMap[normalized];
+      }
+      if (normalized.includes('dark blue')) {
+        return '#00008b';
+      }
+      if (normalized.includes('light blue')) {
+        return '#add8e6';
+      }
+      if (normalized.includes('dark green')) {
+        return '#006400';
+      }
+      if (normalized.includes('light green')) {
+        return '#90ee90';
+      }
+      if (normalized.includes('dark grey') || normalized.includes('dark gray')) {
+        return '#555555';
+      }
+      if (
+        normalized.includes('light grey') ||
+        normalized.includes('light gray')
+      ) {
+        return '#d3d3d3';
+      }
+      return '#e5e5e5';
+    }
+
+    /* ==========================================================
+       NORMALIZE OPTION NAME — lowercase/trim for option-type matching
+       ========================================================== */
+    function normalizeOptionName(name) {
+      return String(name || '')
+        .trim()
+        .toLowerCase();
+    }
+
+    /* ==========================================================
+       GET OPTION TYPE — classify an option as 'color', 'size' or 'normal'
+       ========================================================== */
+    function getOptionType(option) {
+      const name = normalizeOptionName(option.name);
+      if (name === 'color') {
+        return 'color';
+      }
+      if (name === 'size') {
+        return 'size';
+      }
+      return 'normal';
+    }
+
+    /* ==========================================================
+       OPEN POPUP — populate all fields from the hotspot's data-* attrs
+       ========================================================== */
+    function openPopup(button) {
+      lastFocusedElement = button;
+      const productTitle = button.getAttribute('data-product-title') || '';
+      const productPrice = button.getAttribute('data-product-price') || '';
+      const productCompare =
+        button.getAttribute('data-product-compare-price') || '';
+      const productImage = button.getAttribute('data-product-image') || '';
+      const productUrl = button.getAttribute('data-product-url') || '#';
+      const productDescription =
+        button.getAttribute('data-product-description') || '';
+      currentProduct = {
+        id: button.getAttribute('data-product-id'),
+        title: productTitle,
+        price: productPrice,
+        comparePrice: productCompare,
+        image: productImage,
+        url: productUrl,
+        description: productDescription,
+      };
+
+      /* ---- Variants ---- */
+      try {
+        currentVariants = JSON.parse(
+          button.getAttribute('data-product-variants') || '[]',
+        );
+      } catch (error) {
+        console.error('Variant JSON error:', error);
+        currentVariants = [];
+      }
+
+      /* ---- Options ---- */
+      try {
+        currentOptions = JSON.parse(
+          button.getAttribute('data-product-options') || '[]',
+        );
+      } catch (error) {
+        console.error('Option JSON error:', error);
+        currentOptions = [];
+      }
+
+      /* ---- Basic info ---- */
+      popupTitle.textContent = productTitle;
+      popupPrice.textContent = productPrice;
+      popupLink.href = productUrl;
+      popupStatus.textContent = '';
+
+      /* ---- Image ---- */
+      if (productImage) {
+        popupImage.src = productImage;
+        popupImage.alt = productTitle;
+        popupImage.style.display = 'block';
+      } else {
+        popupImage.removeAttribute('src');
+        popupImage.style.display = 'none';
+      }
+
+      /* ---- Compare price (only shown when a real sale price exists) ---- */
+      if (productCompare) {
+        popupCompare.textContent = productCompare;
+        popupCompare.style.display = 'inline';
+      } else {
+        popupCompare.textContent = '';
+        popupCompare.style.display = 'none';
+      }
+
+      /* ---- Description ---- */
+      popupDescription.innerHTML = productDescription || '';
+
+      /* ---- Reset selections ---- */
+      selectedOptions = {};
+
+      /* Automatically pre-select the first available value for non-size
+         options so only Size remains for the customer to choose. */
+      currentOptions.forEach(function (option, optionIndex) {
+        const type = getOptionType(option);
+        if (type === 'size') {
+          return;
+        }
+        const availableVariant = currentVariants.find(function (variant) {
+          return (
+            variant.available &&
+            variant.options &&
+            variant.options[optionIndex] !== undefined
+          );
+        });
+        if (availableVariant && availableVariant.options) {
+          selectedOptions[option.name] = availableVariant.options[optionIndex];
+        }
+      });
+
+      /* ---- Render + enable ---- */
+      renderVariantOptions();
+      updateVariantState();
+
+      /* ---- Open ---- */
+      popup.classList.add('is-active');
+      popup.setAttribute('aria-hidden', 'false');
+      button.setAttribute('aria-expanded', 'true');
+      document.body.classList.add('shoppable-popup-open');
+      const closeButton = section.querySelector('.shoppable-product-popup-close');
+      if (closeButton) {
+        setTimeout(function () {
+          closeButton.focus();
+        }, 50);
+      }
+    }
+
+    /* ==========================================================
+       RENDER VARIANTS — build option UI. Order is always
+       color -> size -> other, regardless of product option order.
+       ========================================================== */
+    function renderVariantOptions() {
+      if (!popupVariants) {
+        return;
+      }
+      popupVariants.innerHTML = '';
+      currentSizeDropdown = null;
+      const sortedOptions = [];
+      const colorOptions = currentOptions.filter(function (option) {
+        return getOptionType(option) === 'color';
+      });
+      const sizeOptions = currentOptions.filter(function (option) {
+        return getOptionType(option) === 'size';
+      });
+      const otherOptions = currentOptions.filter(function (option) {
+        return getOptionType(option) === 'normal';
+      });
+      sortedOptions.push(...colorOptions);
+      sortedOptions.push(...sizeOptions);
+      sortedOptions.push(...otherOptions);
+      sortedOptions.forEach(function (option) {
+        const optionIndex = currentOptions.findIndex(function (originalOption) {
+          return originalOption.name === option.name;
+        });
+        const type = getOptionType(option);
+        if (type === 'size') {
+          renderSizeDropdown(option, optionIndex);
+        } else {
+          renderButtonOptionGroup(option, optionIndex, type);
+        }
+      });
+    }
+
+    /* ==========================================================
+       RENDER BUTTON OPTION GROUP — color + normal options as buttons
+       ========================================================== */
+    function renderButtonOptionGroup(option, optionIndex, type) {
+      const group = document.createElement('div');
+      group.className = 'shoppable-variant-group';
+      const label = document.createElement('div');
+      label.className = 'shoppable-variant-label';
+      label.textContent = option.name;
+      group.appendChild(label);
+      const optionsContainer = document.createElement('div');
+      optionsContainer.className = 'shoppable-variant-options';
+      option.values.forEach(function (value) {
+        const optionButton = document.createElement('button');
+        optionButton.type = 'button';
+        optionButton.className = 'shoppable-variant-option';
+        optionButton.dataset.optionName = option.name;
+        optionButton.dataset.optionValue = value;
+        if (type === 'color') {
+          optionButton.classList.add('shoppable-color-option');
+          /* 10px color left border gets its hex from the color name */
+          optionButton.style.setProperty('--color-code', getColorCode(value));
+          const colorName = document.createElement('span');
+          colorName.className = 'shoppable-color-name';
+          colorName.textContent = value;
+          optionButton.appendChild(colorName);
+        } else {
+          optionButton.classList.add('shoppable-normal-option');
+          const optionName = document.createElement('span');
+          optionName.className = 'shoppable-option-name';
+          optionName.textContent = value;
+          optionButton.appendChild(optionName);
+        }
+        optionButton.addEventListener('click', function () {
+          if (optionButton.disabled) {
+            return;
+          }
+          selectedOptions[option.name] = value;
+          resetInvalidSize();
+          updateVariantState();
+        });
+        optionsContainer.appendChild(optionButton);
+      });
+      group.appendChild(optionsContainer);
+      popupVariants.appendChild(group);
+    }
+
+    /* ==========================================================
+       RENDER SIZE DROPDOWN — build the custom trigger + menu buttons
+       ========================================================== */
+    function renderSizeDropdown(option, optionIndex) {
+      const group = document.createElement('div');
+      group.className = 'shoppable-variant-group';
+      const label = document.createElement('div');
+      label.className = 'shoppable-variant-label';
+      label.textContent = 'CHOOSE SIZE';
+      group.appendChild(label);
+      const dropdown = document.createElement('div');
+      dropdown.className = 'shoppable-size-dropdown';
+      currentSizeDropdown = dropdown;
+
+      /* ========================================================
+         TRIGGER
+         ======================================================== */
+      const trigger = document.createElement('button');
+      trigger.type = 'button';
+      trigger.className = 'shoppable-size-dropdown-trigger';
+      trigger.setAttribute('aria-haspopup', 'listbox');
+      trigger.setAttribute('aria-expanded', 'false');
+      const currentText = document.createElement('span');
+      currentText.className = 'shoppable-size-dropdown-current is-placeholder';
+      currentText.textContent = 'Choose Size';
+      const arrow = document.createElement('span');
+      arrow.className = 'shoppable-size-dropdown-arrow';
+      arrow.setAttribute('aria-hidden', 'true');
+      trigger.appendChild(currentText);
+      trigger.appendChild(arrow);
+
+      /* ========================================================
+         MENU — one button per size value
+         ======================================================== */
+      const menu = document.createElement('div');
+      menu.className = 'shoppable-size-dropdown-menu';
+      menu.setAttribute('role', 'listbox');
+      menu.setAttribute('aria-label', 'Choose Size');
+      option.values.forEach(function (value) {
+        const sizeOption = document.createElement('button');
+        sizeOption.type = 'button';
+        sizeOption.className = 'shoppable-size-dropdown-option';
+        sizeOption.dataset.optionName = option.name;
+        sizeOption.dataset.optionValue = value;
+        sizeOption.setAttribute('role', 'option');
+        const sizeText = document.createElement('span');
+        sizeText.textContent = value;
+        const check = document.createElement('span');
+        check.className = 'shoppable-size-dropdown-option-check';
+        check.textContent = '✓';
+        check.setAttribute('aria-hidden', 'true');
+        sizeOption.appendChild(sizeText);
+        sizeOption.appendChild(check);
+        sizeOption.addEventListener('click', function (event) {
+          event.stopPropagation();
+          if (sizeOption.disabled) {
+            return;
+          }
+          selectedOptions[option.name] = value;
+          currentText.textContent = value;
+          currentText.classList.remove('is-placeholder');
+          closeSizeDropdown();
+          updateVariantState();
+        });
+        menu.appendChild(sizeOption);
+      });
+      dropdown.appendChild(trigger);
+      dropdown.appendChild(menu);
+      trigger.addEventListener('click', function (event) {
+        event.stopPropagation();
+        toggleSizeDropdown();
+      });
+      group.appendChild(dropdown);
+      popupVariants.appendChild(group);
+    }
+
+    /* ==========================================================
+       TOGGLE / OPEN / CLOSE SIZE DROPDOWN
+       ========================================================== */
+    function toggleSizeDropdown() {
+      if (!currentSizeDropdown) {
+        return;
+      }
+      const isOpen = currentSizeDropdown.classList.contains('is-open');
+      if (isOpen) {
+        closeSizeDropdown();
+      } else {
+        openSizeDropdown();
+      }
+    }
+
+    function openSizeDropdown() {
+      if (!currentSizeDropdown) {
+        return;
+      }
+      currentSizeDropdown.classList.add('is-open');
+      const trigger = currentSizeDropdown.querySelector(
+        '.shoppable-size-dropdown-trigger',
+      );
+      if (trigger) {
+        trigger.setAttribute('aria-expanded', 'true');
+      }
+    }
+
+    function closeSizeDropdown() {
+      if (!currentSizeDropdown) {
+        return;
+      }
+      currentSizeDropdown.classList.remove('is-open');
+      const trigger = currentSizeDropdown.querySelector(
+        '.shoppable-size-dropdown-trigger',
+      );
+      if (trigger) {
+        trigger.setAttribute('aria-expanded', 'false');
+      }
+    }
+
+    /* ==========================================================
+       RESET INVALID SIZE — clear the size if the current color/other
+       choice no longer offers it (e.g. Black is changed away from).
+       ========================================================== */
+    function resetInvalidSize() {
+      const sizeOptionIndex = currentOptions.findIndex(function (option) {
+        return getOptionType(option) === 'size';
+      });
+      if (sizeOptionIndex === -1) {
+        return;
+      }
+      const sizeOption = currentOptions[sizeOptionIndex];
+      const selectedSize = selectedOptions[sizeOption.name];
+      if (!selectedSize) {
+        return;
+      }
+      const stillAvailable = isOptionAvailable(
+        sizeOptionIndex,
+        sizeOption.name,
+        selectedSize,
+      );
+      if (!stillAvailable) {
+        delete selectedOptions[sizeOption.name];
+      }
+    }
+
+    /* ==========================================================
+       FIND SELECTED VARIANT — match the currently selected option
+       values against the variant list; returns null until complete.
+       ========================================================== */
+    function findSelectedVariant() {
+      if (!currentVariants.length) {
+        return null;
+      }
+      const hasAllOptions = currentOptions.every(function (option) {
+        return (
+          selectedOptions[option.name] !== undefined &&
+          selectedOptions[option.name] !== ''
+        );
+      });
+      if (!hasAllOptions) {
+        return null;
+      }
+      return (
+        currentVariants.find(function (variant) {
+          if (!variant.options) {
+            return false;
+          }
+          return currentOptions.every(function (option, index) {
+            return variant.options[index] === selectedOptions[option.name];
+          });
+        }) || null
+      );
+    }
+
+    /* ==========================================================
+       CHECK OPTION AVAILABILITY — is this value buildable into a real
+       variant given the other options currently selected?
+       ========================================================== */
+    function isOptionAvailable(optionIndex, optionName, optionValue) {
+      return currentVariants.some(function (variant) {
+        if (!variant.available || !variant.options) {
+          return false;
+        }
+        if (variant.options[optionIndex] !== optionValue) {
+          return false;
+        }
+        return currentOptions.every(function (option, index) {
+          if (index === optionIndex) {
+            return true;
+          }
+          const selected = selectedOptions[option.name];
+          if (!selected) {
+            return true;
+          }
+          return variant.options[index] === selected;
+        });
+      });
+    }
+
+    /* ==========================================================
+       FORMAT MONEY — cents -> the active Shopify store currency
+       ========================================================== */
+    function formatMoney(cents) {
+      const value = Number(cents || 0) / 100;
+      try {
+        return new Intl.NumberFormat(undefined, {
+          style: 'currency',
+          currency: currencyCode,
+        }).format(value);
+      } catch (error) {
+        return value.toFixed(2);
+      }
+    }
+
+    /* ==========================================================
+       UPDATE VARIANT PRICE — swap the popup price for the selected
+       variant's price (+ compare price when it is on sale).
+       ========================================================== */
+    function updateVariantPrice(selectedVariant) {
+      if (!selectedVariant) {
+        return;
+      }
+      if (selectedVariant.price !== undefined) {
+        popupPrice.textContent = formatMoney(selectedVariant.price);
+      }
+      if (
+        selectedVariant.compare_at_price &&
+        Number(selectedVariant.compare_at_price) > Number(selectedVariant.price)
+      ) {
+        popupCompare.textContent = formatMoney(selectedVariant.compare_at_price);
+        popupCompare.style.display = 'inline';
+      } else {
+        popupCompare.textContent = '';
+        popupCompare.style.display = 'none';
+      }
+    }
+
+    /* ==========================================================
+       UPDATE SIZE DROPDOWN UI — disable/enable sizes based on the
+       currently selected color/other options, and keep its label
+       ("Choose Size" prompt vs chosen value) in sync.
+       ========================================================== */
+    function updateSizeDropdownState() {
+      if (!currentSizeDropdown) {
+        return;
+      }
+      const sizeOptionIndex = currentOptions.findIndex(function (option) {
+        return getOptionType(option) === 'size';
+      });
+      if (sizeOptionIndex === -1) {
+        return;
+      }
+      const sizeOption = currentOptions[sizeOptionIndex];
+      const selectedSize = selectedOptions[sizeOption.name];
+      const currentText = currentSizeDropdown.querySelector(
+        '.shoppable-size-dropdown-current',
+      );
+      const sizeButtons = currentSizeDropdown.querySelectorAll(
+        '.shoppable-size-dropdown-option',
+      );
+      sizeButtons.forEach(function (button) {
+        const value = button.dataset.optionValue;
+        const available = isOptionAvailable(
+          sizeOptionIndex,
+          sizeOption.name,
+          value,
+        );
+        button.disabled = !available;
+        button.classList.toggle('is-unavailable', !available);
+        const selected = selectedSize === value;
+        button.classList.toggle('is-selected', selected);
+        button.setAttribute('aria-selected', selected ? 'true' : 'false');
+      });
+      if (currentText) {
+        if (selectedSize) {
+          currentText.textContent = selectedSize;
+          currentText.classList.remove('is-placeholder');
+        } else {
+          currentText.textContent = 'Choose Size';
+          currentText.classList.add('is-placeholder');
+        }
+      }
+    }
+
+    /* ==========================================================
+       UPDATE VARIANT STATE — the master re-render pass: refreshes
+       every option button, the size dropdown, the price, and the
+       add-to-cart button label/state after any selection change.
+       ========================================================== */
+    function updateVariantState() {
+      if (!popupVariants) {
+        return;
+      }
+      const optionButtons = popupVariants.querySelectorAll(
+        '.shoppable-variant-option',
+      );
+      optionButtons.forEach(function (button) {
+        const optionName = button.dataset.optionName;
+        const optionValue = button.dataset.optionValue;
+        const optionIndex = currentOptions.findIndex(function (option) {
+          return option.name === optionName;
+        });
+        const selected = selectedOptions[optionName] === optionValue;
+        button.classList.toggle('is-selected', selected);
+        const available = isOptionAvailable(optionIndex, optionName, optionValue);
+        button.disabled = !available;
+        button.classList.toggle('is-unavailable', !available);
+      });
+      updateSizeDropdownState();
+      const selectedVariant = findSelectedVariant();
+
+      /* ---- Price ---- */
+      if (selectedVariant && selectedVariant.available) {
+        updateVariantPrice(selectedVariant);
+      } else {
+        // Fallback: restore the base product price from the hotspot data.
+        if (currentProduct) {
+          popupPrice.textContent = currentProduct.price;
+          if (currentProduct.comparePrice) {
+            popupCompare.textContent = currentProduct.comparePrice;
+            popupCompare.style.display = 'inline';
+          } else {
+            popupCompare.textContent = '';
+            popupCompare.style.display = 'none';
+          }
+        }
+      }
+
+      /* ---- Add-to-cart label + enabled state ---- */
+      if (selectedVariant && selectedVariant.available) {
+        addToCartButton.disabled = false;
+        addText.textContent = 'ADD TO CART';
+      } else {
+        addToCartButton.disabled = true;
+        const hasSizeOption = currentOptions.some(function (option) {
+          return getOptionType(option) === 'size';
+        });
+        const sizeSelected = currentOptions.some(function (option) {
+          return getOptionType(option) === 'size' && selectedOptions[option.name];
+        });
+        if (hasSizeOption && !sizeSelected) {
+          addText.textContent = 'CHOOSE SIZE';
+        } else if (selectedVariant && !selectedVariant.available) {
+          addText.textContent = 'SOLD OUT';
+        } else {
+          addText.textContent = 'CHOOSE OPTIONS';
+        }
+      }
+    }
+
+    /* ==========================================================
+       SHOULD ADD BUNDLE — true when the selected variant is
+       "Black + Medium" (the auto-bundle trigger combination).
+       ========================================================== */
+    function shouldAddBundle(selectedVariant) {
+      if (!selectedVariant || !selectedVariant.options) {
+        return false;
+      }
+      let hasBlack = false;
+      let hasMedium = false;
+      selectedVariant.options.forEach(function (value) {
+        const normalized = String(value).trim().toLowerCase();
+        if (normalized === 'black') {
+          hasBlack = true;
+        }
+        if (normalized === 'medium') {
+          hasMedium = true;
+        }
+      });
+      return hasBlack && hasMedium;
+    }
+
+    /* ==========================================================
+       ADD TO CART — POST the selected variant (+ optional bundle)
+       to the Shopify AJAX cart, then refresh the cart UI.
+       ========================================================== */
+    async function addToCart() {
+      const selectedVariant = findSelectedVariant();
+      if (!selectedVariant || !selectedVariant.available || !selectedVariant.id) {
+        return;
+      }
+      const bundleRequired = shouldAddBundle(selectedVariant);
+      if (bundleRequired && !bundleVariantId) {
+        popupStatus.textContent = section.dataset.cartErrorMessage;
+        return;
+      }
+      addToCartButton.disabled = true;
+      addToCartButton.classList.add('is-loading');
+      addText.textContent = 'ADDING...';
+      const items = [
+        {
+          id: Number(selectedVariant.id),
+          quantity: 1,
+        },
+      ];
+
+      /* ---- Automatic bundle ---- */
+      if (bundleRequired) {
+        if (bundleVariantId !== Number(selectedVariant.id)) {
+          items.push({ id: bundleVariantId, quantity: 1 });
+        }
+      }
+
+      /* ---- Shopify AJAX cart ---- */
+      try {
+        const root = window.Shopify?.routes?.root || '/';
+        const response = await fetch(root + 'cart/add.js', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify({
+            items: items,
+            sections: 'cart-drawer,cart-icon-bubble,cart-live-region-text',
+            sections_url: window.location.pathname,
+          }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(
+            data.description || data.message || section.dataset.cartErrorMessage,
+          );
+        }
+
+        const cartResponse = await fetch(root + 'cart.js', {
+          headers: { Accept: 'application/json' },
+        });
+        if (!cartResponse.ok) {
+          throw new Error(section.dataset.cartErrorMessage);
+        }
+        const cart = await cartResponse.json();
+        const cartVariantIds = new Set(
+          (cart.items || []).map(function (item) {
+            return Number(item.variant_id);
+          }),
+        );
+        if (items.some(function (item) { return !cartVariantIds.has(item.id); })) {
+          throw new Error(section.dataset.cartErrorMessage);
+        }
+
+        /* ---- Update cart UI with the returned section HTML ---- */
+        if (data.sections) {
+          updateCartSections(data.sections);
+        }
+
+        /* ---- Success ---- */
+        popupStatus.textContent = '';
+        addText.textContent = 'ADDED TO CART ✓';
+        setTimeout(function () {
+          openCartDrawer();
+        }, 150);
+        setTimeout(function () {
+          closePopup();
+        }, 500);
+      } catch (error) {
+        console.error('Shopify add to cart error:', error);
+        popupStatus.textContent =
+          error.message || section.dataset.cartErrorMessage;
+        addText.textContent = 'TRY AGAIN';
+        addToCartButton.disabled = false;
+        addToCartButton.classList.remove('is-loading');
+      }
+    }
+
+    /* ==========================================================
+       UPDATE CART SECTIONS — swap updated section HTML into the DOM
+       so drawer / icon / live-region reflect the new cart contents.
+       ========================================================== */
+    function updateCartSections(sections) {
+      if (!sections) {
+        return;
+      }
+
+      /* ---- Cart drawer ---- */
+      if (sections['cart-drawer']) {
+        const currentCartDrawer = document.querySelector('cart-drawer');
+        if (currentCartDrawer) {
+          const parser = new DOMParser();
+          const parsedDocument = parser.parseFromString(
+            sections['cart-drawer'],
+            'text/html',
+          );
+          const newCartDrawer = parsedDocument.querySelector('cart-drawer');
+          if (newCartDrawer) {
+            currentCartDrawer.replaceWith(newCartDrawer);
+          }
+        }
+      }
+
+      /* ---- Cart icon bubble ---- */
+      if (sections['cart-icon-bubble']) {
+        const currentCartBubble = document.querySelector(
+          '#shopify-section-cart-icon-bubble',
+        );
+        if (currentCartBubble) {
+          const parser = new DOMParser();
+          const parsedDocument = parser.parseFromString(
+            sections['cart-icon-bubble'],
+            'text/html',
+          );
+          const newCartBubble = parsedDocument.querySelector(
+            '#shopify-section-cart-icon-bubble',
+          );
+          if (newCartBubble) {
+            currentCartBubble.replaceWith(newCartBubble);
+          }
+        }
+      }
+
+      /* ---- Live region (screen-reader announcement) ---- */
+      if (sections['cart-live-region-text']) {
+        const currentLiveRegion = document.querySelector(
+          '#shopify-section-cart-live-region-text',
+        );
+        if (currentLiveRegion) {
+          const parser = new DOMParser();
+          const parsedDocument = parser.parseFromString(
+            sections['cart-live-region-text'],
+            'text/html',
+          );
+          const newLiveRegion = parsedDocument.querySelector(
+            '#shopify-section-cart-live-region-text',
+          );
+          if (newLiveRegion) {
+            currentLiveRegion.replaceWith(newLiveRegion);
+          }
+        }
+      }
+    }
+
+    /* ==========================================================
+       OPEN CART DRAWER — prefer the native cart-drawer.open() method
+       ========================================================== */
+    function openCartDrawer() {
+      const cartDrawer = document.querySelector('cart-drawer');
+      if (!cartDrawer) {
+        return;
+      }
+      if (typeof cartDrawer.open === 'function') {
+        cartDrawer.open();
+        return;
+      }
+      cartDrawer.classList.add('active');
+    }
+
+    /* ==========================================================
+       CLOSE POPUP — hide, reset, and restore focus to the hotspot
+       that opened it.
+       ========================================================== */
+    function closePopup() {
+      closeSizeDropdown();
+      popup.classList.remove('is-active');
+      popup.setAttribute('aria-hidden', 'true');
+      hotspots.forEach(function (hotspot) {
+        hotspot.setAttribute('aria-expanded', 'false');
+      });
+      document.body.classList.remove('shoppable-popup-open');
+      addToCartButton.classList.remove('is-loading');
+      addToCartButton.disabled = true;
+      addText.textContent = 'CHOOSE OPTIONS';
+      popupStatus.textContent = '';
+      if (lastFocusedElement) {
+        try {
+          lastFocusedElement.focus();
+        } catch (error) {
+          /* Ignore focus errors */
+        }
+      }
+    }
+
+    /* ==========================================================
+       EVENT WIRING
+       ========================================================== */
+
+    /* ---- Hotspot clicks open the popup ---- */
+    hotspots.forEach(function (hotspot) {
+      hotspot.addEventListener('click', function () {
+        openPopup(hotspot);
+      });
+    });
+
+    /* ---- Add-to-cart ---- */
+    if (addToCartButton) {
+      addToCartButton.addEventListener('click', addToCart);
+    }
+
+    /* ---- Close buttons (X + overlay) ---- */
+    closeButtons.forEach(function (button) {
+      button.addEventListener('click', function () {
+        closePopup();
+      });
+    });
+
+    /* ---- Outside dropdown click closes the size menu ---- */
+    document.addEventListener('click', function (event) {
+      if (currentSizeDropdown && !currentSizeDropdown.contains(event.target)) {
+        closeSizeDropdown();
+      }
+    });
+
+    /* ---- Escape: close size dropdown first, then the popup ---- */
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') {
+        if (
+          currentSizeDropdown &&
+          currentSizeDropdown.classList.contains('is-open')
+        ) {
+          closeSizeDropdown();
+          return;
+        }
+        if (popup.classList.contains('is-active')) {
+          closePopup();
+        }
+      }
+    });
+
+    /* ==========================================================
+       THEME EDITOR SUPPORT — scroll the block into view when it
+       is selected in the theme editor sidebar.
+       ========================================================== */
+    document.addEventListener('shopify:block:select', function (event) {
+      const sectionElement = event.target.closest('#{{ section_id }}');
+      if (!sectionElement) {
+        return;
+      }
+      const block = event.target.closest('.shoppable-grid-item');
+      if (block) {
+        block.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        });
+      }
+    });
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Shoppable image grid",
+  "tag": "section",
+  "class": "section-shoppable-image-grid",
+  "max_blocks": 24,
+  "settings": [
+    {
+      "type": "header",
+      "content": "General"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Tisso vision in the wild"
+    },
+    {
+      "type": "font_picker",
+      "id": "heading_font",
+      "label": "Heading font",
+      "default": "assistant_n4"
+    },
+    {
+      "type": "color",
+      "id": "background_color",
+      "label": "Background color",
+      "default": "#FFFFFF"
+    },
+    {
+      "type": "color",
+      "id": "heading_color",
+      "label": "Heading color",
+      "default": "#000"
+    },
+    {
+      "type": "select",
+      "id": "image_ratio",
+      "label": "Image ratio",
+      "default": "square",
+      "options": [
+        {
+          "value": "square",
+          "label": "Square"
+        },
+        {
+          "value": "portrait",
+          "label": "Portrait 4:5"
+        },
+        {
+          "value": "landscape",
+          "label": "Landscape 4:3"
+        },
+        {
+          "value": "wide",
+          "label": "Wide 16:10"
+        }
+      ]
+    },
+    {
+      "type": "range",
+      "id": "image_radius",
+      "label": "Image corner radius",
+      "min": 0,
+      "max": 50,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "container_width",
+      "label": "Container max width",
+      "min": 800,
+      "max": 1800,
+      "step": 20,
+      "unit": "px",
+      "default": 1400
+    },
+    {
+      "type": "header",
+      "content": "Desktop"
+    },
+    {
+      "type": "range",
+      "id": "columns_desktop",
+      "label": "Columns",
+      "min": 1,
+      "max": 4,
+      "step": 1,
+      "default": 3
+    },
+    {
+      "type": "range",
+      "id": "gap_desktop",
+      "label": "Grid gap",
+      "min": 0,
+      "max": 60,
+      "step": 1,
+      "unit": "px",
+      "default": 18
+    },
+    {
+      "type": "range",
+      "id": "heading_size_desktop",
+      "label": "Heading size",
+      "min": 16,
+      "max": 60,
+      "step": 1,
+      "unit": "px",
+      "default": 36
+    },
+    {
+      "type": "header",
+      "content": "Tablet / iPad"
+    },
+    {
+      "type": "range",
+      "id": "columns_tablet",
+      "label": "Columns",
+      "min": 1,
+      "max": 4,
+      "step": 1,
+      "default": 3
+    },
+    {
+      "type": "range",
+      "id": "gap_tablet",
+      "label": "Grid gap",
+      "min": 0,
+      "max": 50,
+      "step": 1,
+      "unit": "px",
+      "default": 15
+    },
+    {
+      "type": "range",
+      "id": "heading_size_tablet",
+      "label": "Heading size",
+      "min": 14,
+      "max": 50,
+      "step": 1,
+      "unit": "px",
+      "default": 30
+    },
+    {
+      "type": "header",
+      "content": "Mobile"
+    },
+    {
+      "type": "range",
+      "id": "columns_mobile",
+      "label": "Columns",
+      "min": 1,
+      "max": 4,
+      "step": 1,
+      "default": 1
+    },
+    {
+      "type": "range",
+      "id": "gap_mobile",
+      "label": "Grid gap",
+      "min": 0,
+      "max": 40,
+      "step": 1,
+      "unit": "px",
+      "default": 10
+    },
+    {
+      "type": "range",
+      "id": "heading_size_mobile",
+      "label": "Heading size",
+      "min": 14,
+      "max": 40,
+      "step": 1,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "header",
+      "content": "Desktop spacing"
+    },
+    {
+      "type": "range",
+      "id": "margin_top_desktop",
+      "label": "Margin top",
+      "min": 0,
+      "max": 150,
+      "step": 5,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "margin_bottom_desktop",
+      "label": "Margin bottom",
+      "min": 0,
+      "max": 150,
+      "step": 5,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding_top_desktop",
+      "label": "Padding top",
+      "min": 0,
+      "max": 150,
+      "step": 5,
+      "unit": "px",
+      "default": 40
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom_desktop",
+      "label": "Padding bottom",
+      "min": 0,
+      "max": 150,
+      "step": 5,
+      "unit": "px",
+      "default": 40
+    },
+    {
+      "type": "header",
+      "content": "Tablet spacing"
+    },
+    {
+      "type": "range",
+      "id": "margin_top_tablet",
+      "label": "Margin top",
+      "min": 0,
+      "max": 120,
+      "step": 5,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "margin_bottom_tablet",
+      "label": "Margin bottom",
+      "min": 0,
+      "max": 120,
+      "step": 5,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding_top_tablet",
+      "label": "Padding top",
+      "min": 0,
+      "max": 120,
+      "step": 5,
+      "unit": "px",
+      "default": 30
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom_tablet",
+      "label": "Padding bottom",
+      "min": 0,
+      "max": 120,
+      "step": 5,
+      "unit": "px",
+      "default": 30
+    },
+    {
+      "type": "header",
+      "content": "Mobile spacing"
+    },
+    {
+      "type": "range",
+      "id": "margin_top_mobile",
+      "label": "Margin top",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "margin_bottom_mobile",
+      "label": "Margin bottom",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding_top_mobile",
+      "label": "Padding top",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "px",
+      "default": 25
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom_mobile",
+      "label": "Padding bottom",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "px",
+      "default": 25
+    },
+    {
+      "type": "header",
+      "content": "Product popup"
+    },
+    {
+      "type": "text",
+      "id": "view_product_text",
+      "label": "View product text",
+      "default": "VIEW PRODUCT"
+    },
+    {
+      "type": "product",
+      "id": "bundle_product",
+      "label": "Automatic bundle product",
+      "info": "When the selected product variant is Black + Medium, this product's first available variant is automatically added to the cart. Select Soft Winter Jacket here."
+    }
+  ],
+  "blocks": [
+    {
+      "type": "product_image",
+      "name": "Product image",
+      "settings": [
+        {
+          "type": "image_picker",
+          "id": "image",
+          "label": "Image",
+          "info": "Optional. If no image is selected, the selected product's featured image will be used."
+        },
+        {
+          "type": "product",
+          "id": "product",
+          "label": "Product"
+        },
+        {
+          "type": "header",
+          "content": "Hotspot"
+        },
+        {
+          "type": "checkbox",
+          "id": "enable_hotspot",
+          "label": "Enable hotspot",
+          "default": true
+        },
+        {
+          "type": "range",
+          "id": "hotspot_x",
+          "label": "Horizontal position",
+          "min": 0,
+          "max": 100,
+          "step": 1,
+          "unit": "%",
+          "default": 70
+        },
+        {
+          "type": "range",
+          "id": "hotspot_y",
+          "label": "Vertical position",
+          "min": 0,
+          "max": 100,
+          "step": 1,
+          "unit": "%",
+          "default": 50
+        },
+        {
+          "type": "range",
+          "id": "hotspot_size",
+          "label": "Hotspot size",
+          "min": 20,
+          "max": 70,
+          "step": 1,
+          "unit": "px",
+          "default": 30
+        },
+        {
+          "type": "color",
+          "id": "hotspot_color",
+          "label": "Hotspot background",
+          "default": "#FFFFFF"
+        },
+        {
+          "type": "color",
+          "id": "hotspot_icon_color",
+          "label": "Hotspot icon color",
+          "default": "#000"
+        },
+        {
+          "type": "color",
+          "id": "hotspot_border_color",
+          "label": "Hotspot border color",
+          "default": "#FFFFFF"
+        },
+        {
+          "type": "range",
+          "id": "hotspot_border_width",
+          "label": "Hotspot border width",
+          "min": 0,
+          "max": 5,
+          "step": 1,
+          "unit": "px",
+          "default": 1
+        },
+        {
+          "type": "range",
+          "id": "hotspot_shadow_opacity",
+          "label": "Hotspot shadow",
+          "min": 0,
+          "max": 100,
+          "step": 5,
+          "unit": "%",
+          "default": 20
+        },
+        {
+          "type": "range",
+          "id": "hotspot_hover_scale",
+          "label": "Hotspot hover scale",
+          "min": 100,
+          "max": 150,
+          "step": 5,
+          "unit": "%",
+          "default": 115
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Shoppable Image Grid",
+      "blocks": [
+        {
+          "type": "product_image"
+        },
+        {
+          "type": "product_image"
+        },
+        {
+          "type": "product_image"
+        },
+        {
+          "type": "product_image"
+        },
+        {
+          "type": "product_image"
+        },
+        {
+          "type": "product_image"
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}
