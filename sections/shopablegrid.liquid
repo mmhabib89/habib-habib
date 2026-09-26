@@ -276,6 +276,36 @@
             class="shoppable-product-popup-variants"
             data-popup-variants
           ></div>
+          {% if bundle_product != blank %}
+            {% if bundle_product.variants_count > 1 %}
+              <div class="shoppable-bundle-variant" data-bundle-variant-picker hidden>
+                <label class="shoppable-variant-label" for="ShoppableBundleVariant-{{ section.id }}">
+                  Choose your free {{ bundle_product.title | escape }}
+                </label>
+                <select
+                  id="ShoppableBundleVariant-{{ section.id }}"
+                  class="shoppable-bundle-variant-select"
+                  data-bundle-variant
+                  {% unless bundle_variant.available %}
+                    disabled
+                  {% endunless %}
+                >
+                  {% for gift_variant in bundle_product.variants %}
+                    {% if gift_variant.available %}
+                      <option
+                        value="{{ gift_variant.id }}"
+                        {% if gift_variant.id == bundle_variant.id %}
+                          selected
+                        {% endif %}
+                      >
+                        {{- gift_variant.title | escape -}}
+                      </option>
+                    {% endif %}
+                  {% endfor %}
+                </select>
+              </div>
+            {% endif %}
+          {% endif %}
           <!-- ADD TO CART — stays disabled until every option is selected -->
           <button
             type="button"
@@ -1161,6 +1191,18 @@
     line-height: 1.4;
   }
 
+  #{{ section_id }} .shoppable-bundle-variant-select {
+    width: 100%;
+    min-height: 44px;
+    margin-top: 8px;
+    padding: 10px 12px;
+    border: 1px solid #d1d1d1;
+    border-radius: 0;
+    background: #fff;
+    color: #111;
+    font: inherit;
+  }
+
   #{{ section_id }} .shoppable-product-popup-view:hover {
     opacity: 0.6;
   }
@@ -1461,6 +1503,8 @@
     const popupDescription = section.querySelector('[data-popup-description]');
     const popupVariants = section.querySelector('[data-popup-variants]');
     const popupStatus = section.querySelector('[data-popup-status]');
+    const bundleVariantPicker = section.querySelector('[data-bundle-variant-picker]');
+    const bundleVariantSelect = section.querySelector('[data-bundle-variant]');
     const popupLink = section.querySelector('[data-popup-link]');
     const addToCartButton = section.querySelector('[data-popup-add-to-cart]');
     const addText = section.querySelector('[data-add-text]');
@@ -1480,7 +1524,7 @@
     /* ==========================================================
        BUNDLE PRODUCT — JSON-encoded variant id from Liquid above
        ========================================================== */
-    const bundleVariantId = Number({{ bundle_variant_id | default: 0 }});
+    const defaultBundleVariantId = Number({{ bundle_variant_id | default: 0 }});
     const currencyCode = section.dataset.currency || 'USD';
 
     /* ==========================================================
@@ -2085,6 +2129,10 @@
       });
       updateSizeDropdownState();
       const selectedVariant = findSelectedVariant();
+      const hasBundle = shouldAddBundle(selectedVariant);
+      if (bundleVariantPicker) {
+        bundleVariantPicker.hidden = !hasBundle;
+      }
 
       /* ---- Price ---- */
       if (selectedVariant && selectedVariant.available) {
@@ -2165,7 +2213,10 @@
         return;
       }
       const bundleRequired = shouldAddBundle(selectedVariant);
-      if (bundleRequired && !bundleVariantId) {
+      const selectedBundleVariantId = Number(
+        bundleVariantSelect?.value || defaultBundleVariantId
+      );
+      if (bundleRequired && !selectedBundleVariantId) {
         popupStatus.textContent = section.dataset.cartErrorMessage;
         return;
       }
@@ -2181,8 +2232,8 @@
 
       /* ---- Automatic bundle ---- */
       if (bundleRequired) {
-        if (bundleVariantId !== Number(selectedVariant.id)) {
-          items.push({ id: bundleVariantId, quantity: 1 });
+        if (selectedBundleVariantId !== Number(selectedVariant.id)) {
+          items.push({ id: selectedBundleVariantId, quantity: 1 });
         }
       }
 
@@ -2368,6 +2419,11 @@
     /* ---- Add-to-cart ---- */
     if (addToCartButton) {
       addToCartButton.addEventListener('click', addToCart);
+    }
+    if (bundleVariantSelect) {
+      bundleVariantSelect.addEventListener('change', function () {
+        popupStatus.textContent = '';
+      });
     }
 
     /* ---- Close buttons (X + overlay) ---- */

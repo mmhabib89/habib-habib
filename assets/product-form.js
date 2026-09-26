@@ -11,10 +11,34 @@ if (!customElements.get('product-form')) {
         this.cart = document.querySelector('cart-notification') || document.querySelector('cart-drawer');
         this.submitButton = this.querySelector('[type="submit"]');
         this.submitButtonText = this.submitButton.querySelector('span');
+        this.autoGiftPicker = this.querySelector('[data-auto-gift-picker]');
+        this.autoGiftVariantInput = this.querySelector('[data-auto-gift-variant]');
 
         if (document.querySelector('cart-drawer')) this.submitButton.setAttribute('aria-haspopup', 'dialog');
 
         this.hideErrors = this.dataset.hideErrors === 'true';
+        this.updateAutoGiftPicker(this.getSelectedVariant());
+        this.variantChangeUnsubscriber = subscribe(PUB_SUB_EVENTS.variantChange, ({ data }) => {
+          if (String(data.sectionId) === this.dataset.sectionId) {
+            this.updateAutoGiftPicker(data.variant);
+          }
+        });
+      }
+
+      disconnectedCallback() {
+        this.variantChangeUnsubscriber?.();
+      }
+
+      updateAutoGiftPicker(variant) {
+        if (!this.autoGiftPicker) return;
+
+        const sizeOptionIndex = Number(this.dataset.sizeOptionIndex);
+        const size = String(variant?.options?.[sizeOptionIndex] || '').trim().toLowerCase();
+        const qualifies =
+          Number(variant?.id) === Number(this.form?.elements?.id?.value) &&
+          variant?.options?.some((value) => String(value).trim().toLowerCase() === 'black') &&
+          (size === 'm' || size === 'medium');
+        this.autoGiftPicker.hidden = !qualifies;
       }
 
       onSubmitHandler(evt) {
@@ -53,7 +77,9 @@ if (!customElements.get('product-form')) {
           selectedVariant?.options?.some(
             (value) => String(value).trim().toLowerCase() === 'black'
           ) && (normalizedSize === 'm' || normalizedSize === 'medium');
-        const autoGiftVariantId = Number(this.dataset.autoGiftVariantId || 0);
+        const autoGiftVariantId = Number(
+          this.autoGiftVariantInput?.value || this.dataset.autoGiftVariantId || 0
+        );
 
         if (addsGift && !autoGiftVariantId) {
           this.handleErrorMessage(this.dataset.autoGiftErrorMessage);

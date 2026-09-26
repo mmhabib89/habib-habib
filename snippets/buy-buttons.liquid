@@ -51,6 +51,48 @@
         <span class="product-form__error-message"></span>
       </div>
 
+      {%- if auto_gift_product != blank -%}
+        {%- if auto_gift_product.variants_count > 1 -%}
+          <div class="product-form__input product-form__input--dropdown" data-auto-gift-picker hidden>
+            <label class="form__label" for="GiftVariant-{{ section_id }}-{{ product.id }}">
+              Choose your free {{ auto_gift_product.title | escape }}
+            </label>
+            <div class="select">
+              <select
+                id="GiftVariant-{{ section_id }}-{{ product.id }}"
+                class="select__select"
+                data-auto-gift-variant
+                {% unless auto_gift_variant.available %}
+                  disabled
+                {% endunless %}
+              >
+                {%- for gift_variant in auto_gift_product.variants -%}
+                  {%- if gift_variant.available -%}
+                    <option
+                      value="{{ gift_variant.id }}"
+                      {% if gift_variant.id == auto_gift_variant.id %}
+                        selected
+                      {% endif %}
+                    >
+                      {{- gift_variant.title | escape -}}
+                    </option>
+                  {%- endif -%}
+                {%- endfor -%}
+              </select>
+              <span class="svg-wrapper">
+                {{- 'icon-caret.svg' | inline_asset_content -}}
+              </span>
+            </div>
+          </div>
+        {%- else -%}
+          <input
+            type="hidden"
+            data-auto-gift-variant
+            value="{% if auto_gift_variant.available %}{{ auto_gift_variant.id }}{% endif %}"
+          >
+        {%- endif -%}
+      {%- endif -%}
+
       {%- form 'product',
         product,
         id: product_form_id,
