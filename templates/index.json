@@ -67,7 +67,7 @@
             "heading_font_weight": "700",
             "heading_line_height": 1.1,
             "heading_letter_spacing": 0,
-            "content_background_enabled": true,
+            "content_background_enabled": false,
             "content_background_color": "#f5f5f5",
             "content_padding_x": 24,
             "content_padding_y": 24,
