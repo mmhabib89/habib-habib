@@ -280,7 +280,7 @@
         "image_radius": 0,
         "container_width": 1440,
         "columns_desktop": 3,
-        "gap_desktop": 18,
+        "gap_desktop": 20,
         "heading_size_desktop": 36,
         "columns_tablet": 3,
         "gap_tablet": 15,
