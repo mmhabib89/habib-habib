@@ -168,7 +168,7 @@
               {% if topbar_settings.settings.top_button_link == blank %}
                 aria-disabled="true"
               {% endif %}
-              class="herotest-button herotest-button--top herotest-button--fill-{{ hero_button_settings.settings.button_animation }}"
+              class="herotest-button herotest-button--top herotest-button--fill-{{ topbar_settings.settings.top_button_animation }}"
               style="
                 --ht-top-button-bg: {{ topbar_settings.settings.top_button_bg }};
                 --ht-top-button-color: {{ topbar_settings.settings.top_button_text_color }};
@@ -325,7 +325,7 @@
                 {% if hero_button_settings.settings.hero_button_link == blank %}
                   aria-disabled="true"
                 {% endif %}
-                class="herotest-button herotest-button--hero herotest-button--fill-{{ hero_button_settings.settings.button_animation }}"
+                class="herotest-button herotest-button--hero herotest-button--fill-{{ hero_button_settings.settings.hero_button_animation }}"
                 style="
                   --ht-hero-button-bg: {{ hero_button_settings.settings.hero_button_bg }};
                   --ht-hero-button-color: {{ hero_button_settings.settings.hero_button_text_color }};
@@ -1773,6 +1773,34 @@
           "default": true
         },
         {
+          "type": "select",
+          "id": "top_button_animation",
+          "label": "Top button hover direction",
+          "default": "left-to-right",
+          "options": [
+            {
+              "value": "none",
+              "label": "Color change only"
+            },
+            {
+              "value": "left-to-right",
+              "label": "Left to right"
+            },
+            {
+              "value": "right-to-left",
+              "label": "Right to left"
+            },
+            {
+              "value": "bottom-to-top",
+              "label": "Bottom to top"
+            },
+            {
+              "value": "top-to-bottom",
+              "label": "Top to bottom"
+            }
+          ]
+        },
+        {
           "type": "color",
           "id": "top_button_bg",
           "label": "Button background",
@@ -2211,8 +2239,8 @@
         },
         {
           "type": "select",
-          "id": "button_animation",
-          "label": "Hover fill direction",
+          "id": "hero_button_animation",
+          "label": "Hero button hover direction",
           "default": "left-to-right",
           "options": [
             {
