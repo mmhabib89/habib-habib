@@ -31,6 +31,38 @@
 {%- if card_product and card_product != empty -%}
   {%- liquid
     assign ratio = 1
+    assign card_size_option_index = -1
+    assign auto_gift_product = settings.auto_gift_product
+    assign auto_gift_variant = auto_gift_product.selected_or_first_available_variant
+    assign card_variant_qualifies_for_gift = false
+
+    for option in card_product.options_with_values
+      assign normalized_option_name = option.name | downcase
+      if normalized_option_name == 'size'
+        assign card_size_option_index = forloop.index0
+        break
+      endif
+    endfor
+
+    assign card_variant = card_product.selected_or_first_available_variant
+    assign card_variant_size = ''
+    if card_size_option_index >= 0
+      assign card_variant_size = card_variant.options[card_size_option_index] | downcase | strip
+    endif
+    assign card_variant_has_black = false
+    for variant_option in card_variant.options
+      assign normalized_variant_option = variant_option | downcase | strip
+      if normalized_variant_option == 'black'
+        assign card_variant_has_black = true
+        break
+      endif
+    endfor
+    if card_variant_has_black
+      if card_variant_size == 'm' or card_variant_size == 'medium'
+        assign card_variant_qualifies_for_gift = true
+      endif
+    endif
+
     if card_product.featured_media and media_aspect_ratio == 'portrait'
       assign ratio = 0.8
     elsif card_product.featured_media and media_aspect_ratio == 'adapt'
@@ -339,7 +371,15 @@
                   </div>
                 </quick-add-modal>
               {%- else -%}
-                <product-form data-section-id="{{ section.id }}">
+                <product-form
+                  data-section-id="{{ section.id }}"
+                  data-product-id="{{ card_product.id }}"
+                  data-size-option-index="{{ card_size_option_index }}"
+                  data-auto-gift-variant-id="{% if auto_gift_variant.available %}{{ auto_gift_variant.id }}{% endif %}"
+                  data-auto-gift-product-id="{% if auto_gift_product != blank %}{{ auto_gift_product.id }}{% endif %}"
+                  data-auto-gift-error-message="{{ 'sections.cart.cart_error' | t | escape }}"
+                  data-initial-variant-options="{{ card_variant.options | json | escape }}"
+                >
                   {%- form 'product',
                     card_product,
                     id: product_form_id,
@@ -397,6 +437,10 @@
                 id="quick-add-bulk-{{ card_product.selected_or_first_available_variant.id }}-{{ section.id }}"
                 class="quick-add-bulk"
                 data-index="{{ card_product.selected_or_first_available_variant.id }}"
+                data-auto-gift-qualifies="{{ card_variant_qualifies_for_gift }}"
+                data-auto-gift-variant-id="{% if auto_gift_variant.available %}{{ auto_gift_variant.id }}{% endif %}"
+                data-auto-gift-product-id="{% if auto_gift_product != blank %}{{ auto_gift_product.id }}{% endif %}"
+                data-auto-gift-error-message="{{ 'sections.cart.cart_error' | t | escape }}"
               >
                 {% if card_product.selected_or_first_available_variant.available == false %}
                   <button
