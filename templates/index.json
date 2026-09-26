@@ -282,7 +282,7 @@
         "columns_desktop": 3,
         "gap_desktop": 20,
         "heading_size_desktop": 36,
-        "columns_tablet": 2,
+        "columns_tablet": 3,
         "gap_tablet": 15,
         "heading_size_tablet": 30,
         "columns_mobile": 2,
