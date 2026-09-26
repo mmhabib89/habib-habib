@@ -1370,6 +1370,8 @@
 
     #{{ section_id }} .shoppable-grid {
       gap: var(--sg-gap-mobile);
+ grid-template-columns: repeat(var(--sg-columns-mobile), minmax(0, 1fr));
+display: grid;
     }
 
     #{{ section_id }} .shoppable-grid-heading {
