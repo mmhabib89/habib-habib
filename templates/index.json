@@ -138,6 +138,7 @@
       "name": "Advanced hero banner",
       "settings": {
         "desktop_image": "shopify://shop_images/man-adjusts-blue-tuxedo-bowtie_925x_55a49e12-d54b-488e-b7a0-ea4c201eb01f.jpg",
+        "mobile_image": "shopify://shop_images/man-adjusts-blue-tuxedo-bowtie_925x_55a49e12-d54b-488e-b7a0-ea4c201eb01f.jpg",
         "desktop_image_position_x": 50,
         "desktop_image_position_y": 50,
         "mobile_image_position_x": 50,
