@@ -120,9 +120,9 @@
             "bottom_bg": "#f5f5f5",
             "bottom_text_color": "#000000",
             "bottom_padding_y": 10,
-            "bottom_side_padding": 20,
+            "bottom_side_padding": 15,
             "bottom_text_size": 16,
-            "bottom_text_size_mobile": 12,
+            "bottom_text_size_mobile": 14,
             "bottom_font_weight": "500",
             "bottom_letter_spacing": 0,
             "bottom_text_transform": "uppercase"
