@@ -267,8 +267,7 @@
       <div
         class="
           herotest-hero__content
-          herotest-hero__content--horizontal-{{ section.settings.content_horizontal }}
-          herotest-hero__content--vertical-{{ section.settings.content_vertical }}
+          herotest-hero__content--position-{{ section.settings.content_position }}
         "
         style="max-width: {{ section.settings.content_max_width }}px;"
       >
@@ -757,33 +756,45 @@
 
 
 /* ==========================================================================
-   CONTENT ALIGNMENT — horizontal (align-items) + vertical (justify-content)
+   CONTENT POSITION
    ========================================================================== */
 
-#{{ section_id }} .herotest-hero__content--horizontal-left {
+#{{ section_id }} .herotest-hero__content--position-top-left,
+#{{ section_id }} .herotest-hero__content--position-middle-left,
+#{{ section_id }} .herotest-hero__content--position-bottom-left {
   align-items: flex-start;
   text-align: left;
 }
 
-#{{ section_id }} .herotest-hero__content--horizontal-center {
+#{{ section_id }} .herotest-hero__content--position-top-center,
+#{{ section_id }} .herotest-hero__content--position-middle-center,
+#{{ section_id }} .herotest-hero__content--position-bottom-center {
   align-items: center;
   text-align: center;
 }
 
-#{{ section_id }} .herotest-hero__content--horizontal-right {
+#{{ section_id }} .herotest-hero__content--position-top-right,
+#{{ section_id }} .herotest-hero__content--position-middle-right,
+#{{ section_id }} .herotest-hero__content--position-bottom-right {
   align-items: flex-end;
   text-align: right;
 }
 
-#{{ section_id }} .herotest-hero__content--vertical-top {
+#{{ section_id }} .herotest-hero__content--position-top-left,
+#{{ section_id }} .herotest-hero__content--position-top-center,
+#{{ section_id }} .herotest-hero__content--position-top-right {
   justify-content: flex-start;
 }
 
-#{{ section_id }} .herotest-hero__content--vertical-center {
+#{{ section_id }} .herotest-hero__content--position-middle-left,
+#{{ section_id }} .herotest-hero__content--position-middle-center,
+#{{ section_id }} .herotest-hero__content--position-middle-right {
   justify-content: center;
 }
 
-#{{ section_id }} .herotest-hero__content--vertical-bottom {
+#{{ section_id }} .herotest-hero__content--position-bottom-left,
+#{{ section_id }} .herotest-hero__content--position-bottom-center,
+#{{ section_id }} .herotest-hero__content--position-bottom-right {
   justify-content: flex-end;
 }
 
@@ -1394,42 +1405,19 @@
     },
     {
       "type": "select",
-      "id": "content_horizontal",
-      "label": "Content horizontal position",
-      "default": "left",
+      "id": "content_position",
+      "label": "Hero content position",
+      "default": "bottom-left",
       "options": [
-        {
-          "value": "left",
-          "label": "Left"
-        },
-        {
-          "value": "center",
-          "label": "Center"
-        },
-        {
-          "value": "right",
-          "label": "Right"
-        }
-      ]
-    },
-    {
-      "type": "select",
-      "id": "content_vertical",
-      "label": "Content vertical position",
-      "default": "bottom",
-      "options": [
-        {
-          "value": "top",
-          "label": "Top"
-        },
-        {
-          "value": "center",
-          "label": "Center"
-        },
-        {
-          "value": "bottom",
-          "label": "Bottom"
-        }
+        { "value": "top-left", "label": "Top left" },
+        { "value": "top-center", "label": "Top center" },
+        { "value": "top-right", "label": "Top right" },
+        { "value": "middle-left", "label": "Middle left" },
+        { "value": "middle-center", "label": "Middle center" },
+        { "value": "middle-right", "label": "Middle right" },
+        { "value": "bottom-left", "label": "Bottom left" },
+        { "value": "bottom-center", "label": "Bottom center" },
+        { "value": "bottom-right", "label": "Bottom right" }
       ]
     },
     {
