@@ -151,7 +151,7 @@
         "hero_min_height_mobile": 650,
         "content_position": "bottom-left",
         "content_max_width": 650,
-        "hero_padding_x": 70,
+        "hero_padding_x": 20,
         "hero_padding_y": 60,
         "hero_padding_x_tablet": 40,
         "hero_padding_y_tablet": 60,
