@@ -285,7 +285,7 @@
         "columns_tablet": 2,
         "gap_tablet": 15,
         "heading_size_tablet": 30,
-        "columns_mobile": 2,
+        "columns_mobile": 3,
         "gap_mobile": 4,
         "heading_size_mobile": 24,
         "margin_top_desktop": 40,
@@ -298,8 +298,8 @@
         "padding_bottom_tablet": 30,
         "margin_top_mobile": 20,
         "margin_bottom_mobile": 20,
-        "padding_top_mobile": 25,
-        "padding_bottom_mobile": 25,
+        "padding_top_mobile": 20,
+        "padding_bottom_mobile": 20,
         "view_product_text": "VIEW PRODUCT",
         "bundle_product": "classic-varsity-top"
       }
