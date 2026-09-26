@@ -16,7 +16,7 @@
           "type": "top_bar",
           "settings": {
             "show_top_bar": true,
-            "top_bg": "#f2f2f2",
+            "top_bg": "#F5F5F5",
             "mobile_logo_row_bg": "#ffffff",
             "top_padding_y": 12,
             "topbar_max_width": 1450,
