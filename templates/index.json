@@ -117,7 +117,7 @@
           "settings": {
             "show_bottom_bar": true,
             "bottom_text": "SUSTAINABLE, ETHICALLY MADE CLOTHES IN SIZES XXS TO 6XL",
-            "bottom_bg": "#F5F5F5",
+            "bottom_bg": "#f5f5f5",
             "bottom_text_color": "#000000",
             "bottom_padding_y": 8,
             "bottom_side_padding": 20,
@@ -160,9 +160,152 @@
         "mobile_content_position": "top",
         "content_padding_mobile": 24
       }
+    },
+    "shopablegrid_pwyGHB": {
+      "type": "shopablegrid",
+      "blocks": {
+        "product_image_BMb4gk": {
+          "type": "product_image",
+          "settings": {
+            "product": "black-leather-bag",
+            "enable_hotspot": true,
+            "hotspot_x": 60,
+            "hotspot_y": 65,
+            "hotspot_size": 30,
+            "hotspot_color": "#FFFFFF",
+            "hotspot_icon_color": "#000",
+            "hotspot_border_color": "#FFFFFF",
+            "hotspot_border_width": 1,
+            "hotspot_shadow_opacity": 20,
+            "hotspot_hover_scale": 115
+          }
+        },
+        "product_image_8BtFQq": {
+          "type": "product_image",
+          "settings": {
+            "product": "blue-silk-tuxedo",
+            "enable_hotspot": true,
+            "hotspot_x": 80,
+            "hotspot_y": 50,
+            "hotspot_size": 30,
+            "hotspot_color": "#FFFFFF",
+            "hotspot_icon_color": "#000",
+            "hotspot_border_color": "#FFFFFF",
+            "hotspot_border_width": 1,
+            "hotspot_shadow_opacity": 20,
+            "hotspot_hover_scale": 115
+          }
+        },
+        "product_image_NaMC6g": {
+          "type": "product_image",
+          "settings": {
+            "product": "chequered-red-shirt",
+            "enable_hotspot": true,
+            "hotspot_x": 65,
+            "hotspot_y": 40,
+            "hotspot_size": 30,
+            "hotspot_color": "#FFFFFF",
+            "hotspot_icon_color": "#000",
+            "hotspot_border_color": "#FFFFFF",
+            "hotspot_border_width": 1,
+            "hotspot_shadow_opacity": 20,
+            "hotspot_hover_scale": 115
+          }
+        },
+        "product_image_fyJB78": {
+          "type": "product_image",
+          "settings": {
+            "product": "classic-leather-jacket",
+            "enable_hotspot": true,
+            "hotspot_x": 70,
+            "hotspot_y": 50,
+            "hotspot_size": 30,
+            "hotspot_color": "#FFFFFF",
+            "hotspot_icon_color": "#000",
+            "hotspot_border_color": "#FFFFFF",
+            "hotspot_border_width": 1,
+            "hotspot_shadow_opacity": 20,
+            "hotspot_hover_scale": 115
+          }
+        },
+        "product_image_BWjH4y": {
+          "type": "product_image",
+          "settings": {
+            "product": "classic-varsity-top",
+            "enable_hotspot": true,
+            "hotspot_x": 70,
+            "hotspot_y": 50,
+            "hotspot_size": 30,
+            "hotspot_color": "#FFFFFF",
+            "hotspot_icon_color": "#000",
+            "hotspot_border_color": "#FFFFFF",
+            "hotspot_border_width": 1,
+            "hotspot_shadow_opacity": 20,
+            "hotspot_hover_scale": 115
+          }
+        },
+        "product_image_NKaNQd": {
+          "type": "product_image",
+          "settings": {
+            "product": "dark-denim-top",
+            "enable_hotspot": true,
+            "hotspot_x": 70,
+            "hotspot_y": 50,
+            "hotspot_size": 30,
+            "hotspot_color": "#FFFFFF",
+            "hotspot_icon_color": "#000",
+            "hotspot_border_color": "#FFFFFF",
+            "hotspot_border_width": 1,
+            "hotspot_shadow_opacity": 20,
+            "hotspot_hover_scale": 115
+          }
+        }
+      },
+      "block_order": [
+        "product_image_BMb4gk",
+        "product_image_8BtFQq",
+        "product_image_NaMC6g",
+        "product_image_fyJB78",
+        "product_image_BWjH4y",
+        "product_image_NKaNQd"
+      ],
+      "name": "Shoppable Image Grid",
+      "settings": {
+        "heading": "Tisso vision in the wild",
+        "heading_font": "libre_baskerville_n4",
+        "background_color": "#FFFFFF",
+        "heading_color": "#000",
+        "image_ratio": "square",
+        "image_radius": 0,
+        "container_width": 1400,
+        "columns_desktop": 3,
+        "gap_desktop": 18,
+        "heading_size_desktop": 36,
+        "columns_tablet": 3,
+        "gap_tablet": 15,
+        "heading_size_tablet": 30,
+        "columns_mobile": 1,
+        "gap_mobile": 10,
+        "heading_size_mobile": 24,
+        "margin_top_desktop": 0,
+        "margin_bottom_desktop": 0,
+        "padding_top_desktop": 40,
+        "padding_bottom_desktop": 40,
+        "margin_top_tablet": 0,
+        "margin_bottom_tablet": 0,
+        "padding_top_tablet": 30,
+        "padding_bottom_tablet": 30,
+        "margin_top_mobile": 0,
+        "margin_bottom_mobile": 0,
+        "padding_top_mobile": 25,
+        "padding_bottom_mobile": 25,
+        "view_product_text": "VIEW PRODUCT",
+        "bundle_product": ""
+      }
     }
   },
   "order": [
-    "advance_hero_WK6frX"
+    "advance_hero_WK6frX",
+    "shopablegrid_pwyGHB"
   ]
 }
