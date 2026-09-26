@@ -35,7 +35,7 @@ if (!customElements.get('product-form')) {
         const sizeOptionIndex = Number(this.dataset.sizeOptionIndex);
         const size = String(variant?.options?.[sizeOptionIndex] || '').trim().toLowerCase();
         const qualifies =
-          Number(variant?.id) === Number(this.form?.elements?.id?.value) &&
+          (!variant?.id || Number(variant.id) === Number(this.form?.elements?.id?.value)) &&
           variant?.options?.some((value) => String(value).trim().toLowerCase() === 'black') &&
           (size === 'm' || size === 'medium');
         this.autoGiftPicker.hidden = !qualifies;
@@ -70,16 +70,20 @@ if (!customElements.get('product-form')) {
         const quantity = parseInt(formData.get('quantity')) || 1;
         const selectedVariant = this.getSelectedVariant();
         const sizeOptionIndex = Number(this.dataset.sizeOptionIndex);
-        const sizeValue = selectedVariant?.options?.[sizeOptionIndex];
+        const initialOptions = this.getInitialVariantOptions();
+        const variantOptions = selectedVariant?.options || initialOptions;
+        const sizeValue = variantOptions?.[sizeOptionIndex];
         const normalizedSize = String(sizeValue || '').trim().toLowerCase();
         const addsGift =
-          Number(selectedVariant?.id) === Number(variantId) &&
-          selectedVariant?.options?.some(
+          (!selectedVariant?.id || Number(selectedVariant.id) === Number(variantId)) &&
+          variantOptions?.some(
             (value) => String(value).trim().toLowerCase() === 'black'
           ) && (normalizedSize === 'm' || normalizedSize === 'medium');
         const autoGiftVariantId = Number(
           this.autoGiftVariantInput?.value || this.dataset.autoGiftVariantId || 0
         );
+        const autoGiftProductId = Number(this.dataset.autoGiftProductId || 0);
+        let qualifyingCartItem = null;
 
         if (addsGift && !autoGiftVariantId) {
           this.handleErrorMessage(this.dataset.autoGiftErrorMessage);
@@ -90,29 +94,43 @@ if (!customElements.get('product-form')) {
         }
 
         if (addsGift) {
-          const mainCartItem = { id: Number(variantId), quantity };
+          qualifyingCartItem = { id: Number(variantId), quantity };
           const properties = {};
           for (const [key, value] of formData.entries()) {
             const propertyMatch = key.match(/^properties\[(.+)\]$/);
             if (propertyMatch) properties[propertyMatch[1]] = value;
-            if (key === 'selling_plan') mainCartItem.selling_plan = value;
+            if (key === 'selling_plan') qualifyingCartItem.selling_plan = value;
           }
-          if (Object.keys(properties).length) mainCartItem.properties = properties;
-
-          config.headers['Content-Type'] = 'application/json';
-          config.body = JSON.stringify({
-            items: [
-              mainCartItem,
-              { id: autoGiftVariantId, quantity: 1 },
-            ],
-            sections: this.cart?.getSectionsToRender().map((section) => section.id) || [],
-            sections_url: window.location.pathname,
-          });
+          if (Object.keys(properties).length) qualifyingCartItem.properties = properties;
         }
 
         const linesUpdateDeferred = this.createCartLinesUpdateEvent(variantId, quantity);
 
-        fetch(`${routes.cart_add_url}`, config)
+        const cartStatePromise = addsGift
+          ? fetch(`${routes.cart_url}.js`, { headers: { Accept: 'application/json' } }).then((response) => {
+              if (!response.ok) throw new Error(this.dataset.autoGiftErrorMessage);
+              return response.json();
+            })
+          : Promise.resolve(null);
+
+        cartStatePromise
+          .then((cartData) => {
+            if (addsGift) {
+              const giftAlreadyInCart = (cartData?.items || []).some(
+                (item) => Number(item.product_id) === autoGiftProductId
+              );
+              config.headers['Content-Type'] = 'application/json';
+              config.body = JSON.stringify({
+                items: [
+                  qualifyingCartItem,
+                  ...(!giftAlreadyInCart ? [{ id: autoGiftVariantId, quantity: 1 }] : []),
+                ],
+                sections: this.cart?.getSectionsToRender().map((section) => section.id) || [],
+                sections_url: window.location.pathname,
+              });
+            }
+            return fetch(`${routes.cart_add_url}`, config);
+          })
           .then((response) => response.json())
           .then(async (response) => {
             if (response.status) {
@@ -146,9 +164,12 @@ if (!customElements.get('product-form')) {
               const cartVariantIds = new Set(
                 (cartData.items || []).map((item) => Number(item.variant_id))
               );
+              const giftIsInCart = (cartData.items || []).some(
+                (item) => Number(item.product_id) === autoGiftProductId
+              );
               if (
                 !cartVariantIds.has(Number(variantId)) ||
-                !cartVariantIds.has(autoGiftVariantId)
+                !giftIsInCart
               ) {
                 throw new Error(this.dataset.autoGiftErrorMessage);
               }
@@ -235,6 +256,17 @@ if (!customElements.get('product-form')) {
           return JSON.parse(selectedVariantScript.textContent);
         } catch (error) {
           console.error('Unable to read the selected product variant.', error);
+          return null;
+        }
+      }
+
+      getInitialVariantOptions() {
+        if (!this.dataset.initialVariantOptions) return null;
+
+        try {
+          return JSON.parse(this.dataset.initialVariantOptions);
+        } catch (error) {
+          console.error('Unable to read the product card variant options.', error);
           return null;
         }
       }

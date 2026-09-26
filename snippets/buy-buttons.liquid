@@ -42,6 +42,7 @@
       data-product-id="{{ product.id }}"
       data-size-option-index="{{ size_option_index }}"
       data-auto-gift-variant-id="{% if auto_gift_variant.available %}{{ auto_gift_variant.id }}{% endif %}"
+      data-auto-gift-product-id="{% if auto_gift_product != blank %}{{ auto_gift_product.id }}{% endif %}"
       data-auto-gift-error-message="{{ 'sections.cart.cart_error' | t | escape }}"
     >
       <div class="product-form__error-message-wrapper" role="alert" hidden>
