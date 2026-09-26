@@ -44,11 +44,51 @@ if (!customElements.get('product-form')) {
 
         const variantId = formData.get('id');
         const quantity = parseInt(formData.get('quantity')) || 1;
+        const selectedVariant = this.getSelectedVariant();
+        const sizeOptionIndex = Number(this.dataset.sizeOptionIndex);
+        const sizeValue = selectedVariant?.options?.[sizeOptionIndex];
+        const normalizedSize = String(sizeValue || '').trim().toLowerCase();
+        const addsGift =
+          Number(selectedVariant?.id) === Number(variantId) &&
+          selectedVariant?.options?.some(
+            (value) => String(value).trim().toLowerCase() === 'black'
+          ) && (normalizedSize === 'm' || normalizedSize === 'medium');
+        const autoGiftVariantId = Number(this.dataset.autoGiftVariantId || 0);
+
+        if (addsGift && !autoGiftVariantId) {
+          this.handleErrorMessage(this.dataset.autoGiftErrorMessage);
+          this.submitButton.classList.remove('loading');
+          this.submitButton.removeAttribute('aria-disabled');
+          this.querySelector('.loading__spinner').classList.add('hidden');
+          return;
+        }
+
+        if (addsGift) {
+          const mainCartItem = { id: Number(variantId), quantity };
+          const properties = {};
+          for (const [key, value] of formData.entries()) {
+            const propertyMatch = key.match(/^properties\[(.+)\]$/);
+            if (propertyMatch) properties[propertyMatch[1]] = value;
+            if (key === 'selling_plan') mainCartItem.selling_plan = value;
+          }
+          if (Object.keys(properties).length) mainCartItem.properties = properties;
+
+          config.headers['Content-Type'] = 'application/json';
+          config.body = JSON.stringify({
+            items: [
+              mainCartItem,
+              { id: autoGiftVariantId, quantity: 1 },
+            ],
+            sections: this.cart?.getSectionsToRender().map((section) => section.id) || [],
+            sections_url: window.location.pathname,
+          });
+        }
+
         const linesUpdateDeferred = this.createCartLinesUpdateEvent(variantId, quantity);
 
         fetch(`${routes.cart_add_url}`, config)
           .then((response) => response.json())
-          .then((response) => {
+          .then(async (response) => {
             if (response.status) {
               publish(PUB_SUB_EVENTS.cartError, {
                 source: 'product-form',
@@ -67,7 +107,28 @@ if (!customElements.get('product-form')) {
               soldOutMessage.classList.remove('hidden');
               this.error = true;
               return;
-            } else if (!this.cart) {
+            }
+
+            if (addsGift) {
+              const cartResponse = await fetch(`${routes.cart_url}.js`, {
+                headers: { Accept: 'application/json' },
+              });
+              if (!cartResponse.ok) {
+                throw new Error(this.dataset.autoGiftErrorMessage);
+              }
+              const cartData = await cartResponse.json();
+              const cartVariantIds = new Set(
+                (cartData.items || []).map((item) => Number(item.variant_id))
+              );
+              if (
+                !cartVariantIds.has(Number(variantId)) ||
+                !cartVariantIds.has(autoGiftVariantId)
+              ) {
+                throw new Error(this.dataset.autoGiftErrorMessage);
+              }
+            }
+
+            if (!this.cart) {
               this.resolveCartLinesUpdate(linesUpdateDeferred);
               window.location = window.routes.cart_url;
               return;
@@ -107,6 +168,7 @@ if (!customElements.get('product-form')) {
           })
           .catch((e) => {
             console.error(e);
+            this.handleErrorMessage(e.message || this.dataset.autoGiftErrorMessage);
             this.dispatchCartErrorEvent(e.message || 'Network error', 'SERVICE_UNAVAILABLE');
             linesUpdateDeferred?.reject(e);
           })
@@ -132,6 +194,22 @@ if (!customElements.get('product-form')) {
 
         if (errorMessage) {
           this.errorMessage.textContent = errorMessage;
+        }
+      }
+
+      getSelectedVariant() {
+        const productInfo = this.closest('product-info');
+        const quickAddModal = this.closest('quick-add-modal');
+        const selectedVariantScript =
+          productInfo?.querySelector('variant-selects [data-selected-variant]') ||
+          quickAddModal?.querySelector('variant-selects [data-selected-variant]');
+        if (!selectedVariantScript) return null;
+
+        try {
+          return JSON.parse(selectedVariantScript.textContent);
+        } catch (error) {
+          console.error('Unable to read the selected product variant.', error);
+          return null;
         }
       }
 

@@ -1466,5 +1466,16 @@
         "label": "t:settings_schema.customer_accounts.settings.customer_account_menu.label"
       }
     ]
+  },
+  {
+    "name": "Automatic gift",
+    "settings": [
+      {
+        "type": "product",
+        "id": "auto_gift_product",
+        "label": "Gift product",
+        "info": "This product is added when a customer adds a product with Color Black and Size M or Medium to their cart."
+      }
+    ]
   }
 ]

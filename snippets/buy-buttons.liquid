@@ -22,12 +22,27 @@
       if block.settings.show_dynamic_checkout and gift_card_recipient_feature_active == false
         assign show_dynamic_checkout = true
       endif
+
+      assign auto_gift_product = settings.auto_gift_product
+      assign auto_gift_variant = auto_gift_product.selected_or_first_available_variant
+      assign size_option_index = -1
+      for option in product.options_with_values
+        assign normalized_option_name = option.name | downcase
+        if normalized_option_name == 'size'
+          assign size_option_index = forloop.index0
+          break
+        endif
+      endfor
     -%}
 
     <product-form
       class="product-form"
       data-hide-errors="{{ gift_card_recipient_feature_active }}"
       data-section-id="{{ section.id }}"
+      data-product-id="{{ product.id }}"
+      data-size-option-index="{{ size_option_index }}"
+      data-auto-gift-variant-id="{% if auto_gift_variant.available %}{{ auto_gift_variant.id }}{% endif %}"
+      data-auto-gift-error-message="{{ 'sections.cart.cart_error' | t | escape }}"
     >
       <div class="product-form__error-message-wrapper" role="alert" hidden>
         <span class="svg-wrapper">

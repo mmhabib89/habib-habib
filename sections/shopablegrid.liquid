@@ -2126,25 +2126,33 @@
     }
 
     /* ==========================================================
-       SHOULD ADD BUNDLE — true when the selected variant is
-       "Black + Medium" (the auto-bundle trigger combination).
+       SHOULD ADD BUNDLE — match Black plus a medium size. Shopify
+       products often label Medium as "M", so accept both values.
        ========================================================== */
     function shouldAddBundle(selectedVariant) {
-      if (!selectedVariant || !selectedVariant.options) {
+      if (
+        !selectedVariant ||
+        !Array.isArray(selectedVariant.options) ||
+        !Array.isArray(currentOptions)
+      ) {
         return false;
       }
-      let hasBlack = false;
-      let hasMedium = false;
-      selectedVariant.options.forEach(function (value) {
-        const normalized = String(value).trim().toLowerCase();
-        if (normalized === 'black') {
-          hasBlack = true;
-        }
-        if (normalized === 'medium') {
-          hasMedium = true;
-        }
+
+      const hasBlack = selectedVariant.options.some(function (value) {
+        return String(value).trim().toLowerCase() === 'black';
       });
-      return hasBlack && hasMedium;
+      const hasMediumSize = currentOptions.some(function (option, index) {
+        if (
+          getOptionType(option) !== 'size' ||
+          selectedVariant.options[index] === undefined
+        ) {
+          return false;
+        }
+        const size = String(selectedVariant.options[index]).trim().toLowerCase();
+        return size === 'm' || size === 'medium';
+      });
+
+      return hasBlack && hasMediumSize;
     }
 
     /* ==========================================================
