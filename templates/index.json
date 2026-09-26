@@ -67,6 +67,12 @@
             "heading_font_weight": "700",
             "heading_line_height": 1.1,
             "heading_letter_spacing": 0,
+            "content_background_enabled": true,
+            "content_background_color": "#F5F5F5",
+            "content_padding_x": 24,
+            "content_padding_y": 24,
+            "use_content_text_color": false,
+            "content_text_color": "#000000",
             "show_paragraph": true,
             "paragraph": "Discover Joy: Your Ultimate Holiday Gift Destination.\nExplore our curated selection and find the perfect gifts to delight your loved ones this holiday season.",
             "paragraph_color": "#000000",
@@ -112,7 +118,7 @@
             "show_bottom_bar": true,
             "bottom_text": "SUSTAINABLE, ETHICALLY MADE CLOTHES IN SIZES XXS TO 6XL",
             "bottom_bg": "#ffffff",
-            "bottom_text_color": "#111111",
+            "bottom_text_color": "#000000",
             "bottom_padding_y": 8,
             "bottom_side_padding": 20,
             "bottom_text_size": 16,
@@ -153,9 +159,7 @@
         "hero_padding_x_mobile": 25,
         "hero_padding_y_mobile": 60,
         "mobile_content_position": "top",
-        "mobile_content_bg_enable": true,
-        "mobile_content_bg_color": "#ffffff",
-        "mobile_content_bg_padding": 24
+        "content_padding_mobile": 24
       }
     }
   },
