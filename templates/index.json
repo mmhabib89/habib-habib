@@ -46,7 +46,7 @@
             "top_button_hover_bg": "#000000",
             "top_button_hover_text_color": "#ffffff",
             "top_button_font_size": 16,
-            "top_button_font_size_mobile": 14,
+            "top_button_font_size_mobile": 16,
             "top_button_padding_x": 40,
             "top_button_padding_y": 16,
             "top_button_padding_x_mobile": 18,
