@@ -128,6 +128,10 @@
     "cart_drawer_collection": "",
     "cart_color_scheme": "scheme-1",
     "customer_account_menu": "customer-account-main-menu",
+    "advanced_popup_text_color": "#000000",
+    "advanced_popup_border_color": "#000000",
+    "advanced_popup_border_width": 0,
+    "advanced_popup_title_size": 18,
     "sections": {
       "main-password-header": {
         "type": "main-password-header",
