@@ -83,6 +83,12 @@
   data-popup-color-label="{{ settings.advanced_popup_color_label | escape }}"
   data-popup-size-label="{{ settings.advanced_popup_size_label | escape }}"
   data-popup-size-placeholder="{{ settings.advanced_popup_size_placeholder | escape }}"
+  data-color-variant-black="{{ settings.color_variant_black | default: '#000000' }}"
+  data-color-variant-dark-gray="{{ settings.color_variant_dark_gray | default: '#333333' }}"
+  data-color-variant-white="{{ settings.color_variant_white | default: '#FFFFFF' }}"
+  data-color-variant-gray="{{ settings.color_variant_gray | default: '#AFAFB7' }}"
+  data-color-variant-blue="{{ settings.color_variant_blue | default: '#0D499F' }}"
+  data-color-variant-red="{{ settings.color_variant_red | default: '#B20F36' }}"
 >
 
   <div class="shoppable-grid-container">
@@ -1836,10 +1842,14 @@ display: grid;
        COLOR MAP — named colors -> hex, used to draw the color swatches
        ========================================================== */
     const colorMap = {
-      black: '#000000',
-      white: '#ffffff',
-      blue: '#0000ff',
-      red: '#ff0000',
+      black: section.dataset.colorVariantBlack || '#000000',
+      'dark gray': section.dataset.colorVariantDarkGray || '#333333',
+      'dark grey': section.dataset.colorVariantDarkGray || '#333333',
+      white: section.dataset.colorVariantWhite || '#ffffff',
+      gray: section.dataset.colorVariantGray || '#AFAFB7',
+      grey: section.dataset.colorVariantGray || '#AFAFB7',
+      blue: section.dataset.colorVariantBlue || '#0D499F',
+      red: section.dataset.colorVariantRed || '#B20F36',
       green: '#008000',
       yellow: '#ffff00',
       orange: '#ffa500',
@@ -1899,7 +1909,7 @@ display: grid;
         return '#90ee90';
       }
       if (normalized.includes('dark grey') || normalized.includes('dark gray')) {
-        return '#555555';
+        return colorMap['dark gray'];
       }
       if (
         normalized.includes('light grey') ||

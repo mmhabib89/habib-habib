@@ -98,6 +98,46 @@
           "on_secondary_button": "secondary_button_label",
           "secondary_button_border": "secondary_button_label"
         }
+      },
+      {
+        "type": "header",
+        "content": "Color variant swatches"
+      },
+      {
+        "type": "color",
+        "id": "color_variant_black",
+        "label": "Black variant (#000000)",
+        "default": "#000000"
+      },
+      {
+        "type": "color",
+        "id": "color_variant_dark_gray",
+        "label": "Dark gray variant (#333333)",
+        "default": "#333333"
+      },
+      {
+        "type": "color",
+        "id": "color_variant_white",
+        "label": "White variant (#FFFFFF)",
+        "default": "#FFFFFF"
+      },
+      {
+        "type": "color",
+        "id": "color_variant_gray",
+        "label": "Gray variant (#AFAFB7)",
+        "default": "#AFAFB7"
+      },
+      {
+        "type": "color",
+        "id": "color_variant_blue",
+        "label": "Blue variant (#0D499F)",
+        "default": "#0D499F"
+      },
+      {
+        "type": "color",
+        "id": "color_variant_red",
+        "label": "Red variant (#B20F36)",
+        "default": "#B20F36"
       }
     ]
   },
