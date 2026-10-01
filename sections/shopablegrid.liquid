@@ -78,7 +78,7 @@
   "
   data-currency="{{ shop.currency }}"
   data-cart-error-message="{{ 'sections.cart.cart_error' | t | escape }}"
-  data-popup-design="{{ section.settings.popup_design }}"
+  data-popup-design="advanced"
   data-popup-add-to-cart-label="{{ settings.advanced_popup_button_label | escape }}"
   data-popup-color-label="{{ settings.advanced_popup_color_label | escape }}"
   data-popup-size-label="{{ settings.advanced_popup_size_label | escape }}"
@@ -208,7 +208,7 @@
     button on open (see openPopup in the script).
   {% endcomment %}
   <div
-    class="shoppable-product-popup shoppable-product-popup--{{ section.settings.popup_design }}"
+    class="shoppable-product-popup shoppable-product-popup--advanced"
     aria-hidden="true"
     data-shoppable-popup
   >
@@ -1278,7 +1278,7 @@ justify-content: center;
     opacity: 0.6;
   }
 
-  @media screen and (min-width: 990px) {
+  @media screen {
     #{{ section_id }} .shoppable-product-popup--advanced .shoppable-product-popup-card {
       width: min(100%, {{ settings.advanced_popup_width }}px);
       max-width: {{ settings.advanced_popup_width }}px;
@@ -1384,6 +1384,15 @@ justify-content: center;
       color: {{ settings.advanced_popup_selected_text }};
     }
 
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-color-option:hover:not(:disabled) .shoppable-color-name,
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-color-option.is-selected .shoppable-color-name,
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-normal-option:hover:not(:disabled) .shoppable-option-name,
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-normal-option.is-selected .shoppable-option-name,
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-size-dropdown-option:hover:not(:disabled) span,
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-size-dropdown-option.is-selected span {
+      color: {{ settings.advanced_popup_selected_text }};
+    }
+
     #{{ section_id }} .shoppable-product-popup--advanced .shoppable-color-option:hover:not(:disabled),
     #{{ section_id }} .shoppable-product-popup--advanced .shoppable-color-option.is-selected {
       box-shadow: inset 10px 0 0 var(--color-code);
@@ -1422,22 +1431,30 @@ justify-content: center;
       align-self: stretch;
       border: 0;
       border-left: 1px solid {{ settings.advanced_popup_control_border }};
+      color: {{ settings.advanced_popup_text_color }};
       box-sizing: border-box;
       transform: none;
     }
 
     #{{ section_id }} .shoppable-product-popup--advanced .shoppable-size-dropdown-arrow::before {
+      display: block;
+      position: static;
       width: 9px;
       height: 9px;
+      border: 0;
       border-right: 1.5px solid currentColor;
       border-bottom: 1.5px solid currentColor;
       content: '';
-      transform: rotate(45deg) translateY(-2px);
+      transform: rotate(45deg);
       transition: transform 0.18s ease;
     }
 
     #{{ section_id }} .shoppable-product-popup--advanced .shoppable-size-dropdown.is-open .shoppable-size-dropdown-arrow::before {
-      transform: rotate(225deg) translateY(-1px);
+      transform: rotate(225deg);
+    }
+
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-size-dropdown.is-open .shoppable-size-dropdown-arrow {
+      transform: none;
     }
 
     #{{ section_id }} .shoppable-product-popup--advanced .shoppable-size-dropdown-menu {
@@ -1453,6 +1470,10 @@ justify-content: center;
     #{{ section_id }} .shoppable-product-popup--advanced .shoppable-size-dropdown-option:disabled {
       color: {{ settings.advanced_popup_text_color }};
       opacity: 0.35;
+    }
+
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-size-dropdown-option:disabled span {
+      color: {{ settings.advanced_popup_text_color }};
     }
 
     #{{ section_id }} .shoppable-product-popup--advanced .shoppable-product-popup-add {
@@ -3070,23 +3091,6 @@ justify-content: center;
     {
       "type": "header",
       "content": "Product popup"
-    },
-    {
-      "type": "select",
-      "id": "popup_design",
-      "label": "Popup design",
-      "info": "Customize the Advanced popup in Theme settings under Shoppable popup.",
-      "options": [
-        {
-          "value": "old",
-          "label": "Old popup"
-        },
-        {
-          "value": "advanced",
-          "label": "Advanced popup"
-        }
-      ],
-      "default": "advanced"
     },
     {
       "type": "text",
