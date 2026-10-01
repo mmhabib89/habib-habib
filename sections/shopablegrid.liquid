@@ -809,7 +809,7 @@
     display: flex;
     flex-wrap: wrap;
     width: 100%;
-    gap: 8px;
+ 
   }
 
   /* ==========================================================
@@ -1068,7 +1068,7 @@
     min-height: 42px;
     display: flex;
     align-items: center;
-    justify-content: space-between;
+   
     padding: 9px 11px;
     border: 0;
     border-radius: 1px;
@@ -1567,8 +1567,9 @@ justify-content: center;
     }
 
     #{{ section_id }} .shoppable-grid {
-      grid-template-columns: repeat(var(--sg-columns-mobile), minmax(0, 1fr));
       gap: var(--sg-gap-mobile);
+ grid-template-columns: repeat(var(--sg-columns-mobile), minmax(0, 1fr));
+display: grid;
     }
 
     #{{ section_id }} .shoppable-grid-heading {
@@ -1687,8 +1688,7 @@ justify-content: center;
 
     #{{ section_id }} .shoppable-variant-options {
       width: 100%;
-      display: flex;
-      gap: 8px;
+      display: flex;     
     }
 
     /* ==========================================================
