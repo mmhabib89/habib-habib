@@ -1581,6 +1581,16 @@
       },
       {
         "type": "range",
+        "id": "advanced_popup_shadow_opacity",
+        "label": "Popup shadow opacity",
+        "min": 0,
+        "max": 30,
+        "step": 1,
+        "unit": "%",
+        "default": 12
+      },
+      {
+        "type": "range",
         "id": "advanced_popup_title_size",
         "label": "Title size",
         "min": 12,

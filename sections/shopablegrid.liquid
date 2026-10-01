@@ -1281,7 +1281,7 @@ justify-content: center;
       border: {{ settings.advanced_popup_border_width }}px solid {{ settings.advanced_popup_border_color }};
       border-radius: {{ settings.advanced_popup_corner_radius }}px;
       background: {{ settings.advanced_popup_background }};
-      box-shadow: none;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, {{ settings.advanced_popup_shadow_opacity | divided_by: 100.0 }});
       overflow-y: auto;
     }
 
