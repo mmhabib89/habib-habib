@@ -1419,10 +1419,10 @@ justify-content: center;
     #{{ section_id }} .shoppable-product-popup--advanced .shoppable-size-dropdown-arrow {
       position: relative;
       display: flex;
-      flex: 0 0 54px;
+      flex: 0 0 70px;
       align-items: center;
       justify-content: center;
-      width: 54px;
+      width: 70px;
       height: auto;
       align-self: stretch;
       border: 0;
@@ -1434,19 +1434,21 @@ justify-content: center;
 
     #{{ section_id }} .shoppable-product-popup--advanced .shoppable-size-dropdown-arrow::before {
       display: block;
-      position: static;
+      position: absolute;
+      top: 50%;
+      left: 50%;
       width: 9px;
       height: 9px;
       border: 0;
       border-right: 1.5px solid currentColor;
       border-bottom: 1.5px solid currentColor;
       content: '';
-      transform: rotate(45deg);
+      transform: translate(-50%, -50%) rotate(45deg);
       transition: transform 0.18s ease;
     }
 
     #{{ section_id }} .shoppable-product-popup--advanced .shoppable-size-dropdown.is-open .shoppable-size-dropdown-arrow::before {
-      transform: rotate(225deg);
+      transform: translate(-50%, -50%) rotate(225deg);
     }
 
     #{{ section_id }} .shoppable-product-popup--advanced .shoppable-size-dropdown.is-open .shoppable-size-dropdown-arrow {
