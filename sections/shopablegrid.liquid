@@ -703,7 +703,6 @@
     margin: 0 0 13px;
     padding-right: 25px; /* keeps long titles clear of the close button */
     color: #000;
-    font-family: "{{ section.settings.heading_font.family | escape }}", {{ section.settings.heading_font.fallback_families | escape }};
     font-size: 25px;
     line-height: 1.25;
     font-weight: 500;
@@ -1288,7 +1287,22 @@ justify-content: center;
       border-radius: {{ settings.advanced_popup_corner_radius }}px;
       background: {{ settings.advanced_popup_background }};
       box-shadow: 0 12px 32px rgba(0, 0, 0, {{ settings.advanced_popup_shadow_opacity | divided_by: 100.0 }});
+      font-family: var(--font-body-family);
+      font-style: var(--font-body-style);
+      font-weight: var(--font-body-weight);
       overflow-y: auto;
+    }
+
+    #{{ section_id }} .shoppable-product-popup--advanced button,
+    #{{ section_id }} .shoppable-product-popup--advanced a {
+      font-family: inherit;
+      font-style: inherit;
+    }
+
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-product-popup-title {
+      font-family: var(--font-heading-family);
+      font-style: var(--font-heading-style);
+      font-weight: var(--font-heading-weight);
     }
 
     #{{ section_id }} .shoppable-product-popup--advanced .shoppable-product-popup-content {
