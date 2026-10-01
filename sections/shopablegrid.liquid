@@ -78,6 +78,11 @@
   "
   data-currency="{{ shop.currency }}"
   data-cart-error-message="{{ 'sections.cart.cart_error' | t | escape }}"
+  data-popup-design="{{ section.settings.popup_design }}"
+  data-popup-add-to-cart-label="{{ settings.advanced_popup_button_label | escape }}"
+  data-popup-color-label="{{ settings.advanced_popup_color_label | escape }}"
+  data-popup-size-label="{{ settings.advanced_popup_size_label | escape }}"
+  data-popup-size-placeholder="{{ settings.advanced_popup_size_placeholder | escape }}"
 >
 
   <div class="shoppable-grid-container">
@@ -203,7 +208,7 @@
     button on open (see openPopup in the script).
   {% endcomment %}
   <div
-    class="shoppable-product-popup"
+    class="shoppable-product-popup shoppable-product-popup--{{ section.settings.popup_design }}"
     aria-hidden="true"
     data-shoppable-popup
   >
@@ -1273,6 +1278,211 @@ justify-content: center;
     opacity: 0.6;
   }
 
+  @media screen and (min-width: 990px) {
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-product-popup-card {
+      width: min(100%, {{ settings.advanced_popup_width }}px);
+      max-width: {{ settings.advanced_popup_width }}px;
+      border: {{ settings.advanced_popup_border_width }}px solid {{ settings.advanced_popup_border_color }};
+      border-radius: {{ settings.advanced_popup_corner_radius }}px;
+      background: {{ settings.advanced_popup_background }};
+      box-shadow: none;
+      overflow-y: auto;
+    }
+
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-product-popup-content {
+      padding: {{ settings.advanced_popup_padding }}px;
+    }
+
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-product-popup-top {
+      grid-template-columns: minmax(0, {{ settings.advanced_popup_image_width }}%) minmax(0, 1fr);
+    }
+
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-product-popup-image-wrap {
+      aspect-ratio: {{ settings.advanced_popup_image_ratio }};
+    }
+
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-product-popup-info {
+      padding: {{ settings.advanced_popup_info_padding }}px;
+    }
+
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-product-popup-title,
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-product-popup-current-price,
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-product-popup-description,
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-variant-label,
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-color-name,
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-size-dropdown-current,
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-size-dropdown-option,
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-product-popup-view,
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-product-popup-add {
+      color: {{ settings.advanced_popup_text_color }};
+    }
+
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-product-popup-title {
+      margin-bottom: 12px;
+      padding-right: 24px;
+      font-size: {{ settings.advanced_popup_title_size }}px;
+    }
+
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-product-popup-price {
+      margin-bottom: 12px;
+    }
+
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-product-popup-current-price {
+      font-size: {{ settings.advanced_popup_body_size | plus: 2 }}px;
+    }
+
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-product-popup-description {
+      max-height: 160px;
+      font-size: {{ settings.advanced_popup_body_size }}px;
+    }
+
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-product-popup-bottom {
+      padding-top: 14px;
+      background: {{ settings.advanced_popup_background }};
+    }
+
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-variant-group {
+      margin-bottom: 14px;
+    }
+
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-variant-label {
+      margin-bottom: 6px;
+      font-size: {{ settings.advanced_popup_label_size }}px;
+      font-weight: 400;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-variant-options {
+      gap: 0;
+      flex-wrap: nowrap;
+    }
+
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-color-option {
+      flex: 1 1 0;
+      min-width: 0;
+      min-height: {{ settings.advanced_popup_control_height }}px;
+      margin-left: -1px;
+      padding: 8px 12px;
+      border-color: {{ settings.advanced_popup_control_border }};
+      background-color: {{ settings.advanced_popup_background }};
+      color: {{ settings.advanced_popup_text_color }};
+    }
+
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-color-option:first-child {
+      margin-left: 0;
+    }
+
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-color-option:hover:not(:disabled),
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-color-option.is-selected,
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-normal-option:hover:not(:disabled),
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-normal-option.is-selected,
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-size-dropdown-option:hover:not(:disabled),
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-size-dropdown-option.is-selected {
+      border-color: {{ settings.advanced_popup_selected_background }};
+      background-color: {{ settings.advanced_popup_selected_background }};
+      color: {{ settings.advanced_popup_selected_text }};
+    }
+
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-color-option:hover:not(:disabled),
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-color-option.is-selected {
+      box-shadow: inset 10px 0 0 var(--color-code);
+    }
+
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-size-dropdown,
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-size-dropdown-trigger {
+      width: 100%;
+    }
+
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-size-dropdown-trigger {
+      min-height: {{ settings.advanced_popup_control_height }}px;
+      gap: 0;
+      padding: 0;
+      border-color: {{ settings.advanced_popup_control_border }};
+      background: {{ settings.advanced_popup_background }};
+      color: {{ settings.advanced_popup_text_color }};
+    }
+
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-size-dropdown-current {
+      text-align: center;
+    }
+
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-size-dropdown-current.is-placeholder {
+      color: {{ settings.advanced_popup_text_color }};
+    }
+
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-size-dropdown-arrow {
+      position: relative;
+      display: flex;
+      flex: 0 0 54px;
+      align-items: center;
+      justify-content: center;
+      width: 54px;
+      height: auto;
+      align-self: stretch;
+      border: 0;
+      border-left: 1px solid {{ settings.advanced_popup_control_border }};
+      box-sizing: border-box;
+      transform: none;
+    }
+
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-size-dropdown-arrow::before {
+      width: 9px;
+      height: 9px;
+      border-right: 1.5px solid currentColor;
+      border-bottom: 1.5px solid currentColor;
+      content: '';
+      transform: rotate(45deg) translateY(-2px);
+      transition: transform 0.18s ease;
+    }
+
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-size-dropdown.is-open .shoppable-size-dropdown-arrow::before {
+      transform: rotate(225deg) translateY(-1px);
+    }
+
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-size-dropdown-menu {
+      border-color: {{ settings.advanced_popup_control_border }};
+      background: {{ settings.advanced_popup_background }};
+    }
+
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-size-dropdown-option {
+      min-height: {{ settings.advanced_popup_control_height }}px;
+      background: {{ settings.advanced_popup_background }};
+    }
+
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-size-dropdown-option:disabled {
+      color: {{ settings.advanced_popup_text_color }};
+      opacity: 0.35;
+    }
+
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-product-popup-add {
+      width: 100%;
+      min-width: 0;
+      min-height: {{ settings.advanced_popup_button_height }}px;
+      margin-top: 22px;
+      border-radius: {{ settings.advanced_popup_button_radius }}px;
+      background: {{ settings.advanced_popup_button_background }};
+      color: {{ settings.advanced_popup_button_text }};
+      font-size: {{ settings.advanced_popup_button_size }}px;
+    }
+
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-product-popup-add:disabled {
+      opacity: 1;
+    }
+
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-product-popup-close {
+      top: 4px;
+      right: 4px;
+      width: 30px;
+      height: 30px;
+      color: {{ settings.advanced_popup_text_color }};
+    }
+
+    #{{ section_id }} .shoppable-product-popup--advanced .shoppable-product-popup-overlay {
+      background: rgba(0, 0, 0, {{ settings.advanced_popup_overlay_opacity | divided_by: 100.0 }});
+    }
+  }
+
   /* ==========================================================
      TABLET — 990px and below
      ========================================================== */
@@ -1590,6 +1800,15 @@ justify-content: center;
        BUNDLE PRODUCT — JSON-encoded variant id from Liquid above
        ========================================================== */
     const defaultBundleVariantId = Number({{ bundle_variant_id | default: 0 }});
+    const isAdvancedPopup = section.dataset.popupDesign === 'advanced';
+    const addToCartLabel =
+      isAdvancedPopup
+        ? section.dataset.popupAddToCartLabel || 'ADD TO CART'
+        : 'ADD TO CART';
+    const advancedColorLabel = section.dataset.popupColorLabel || 'Color';
+    const advancedSizeLabel = section.dataset.popupSizeLabel || 'Size';
+    const advancedSizePlaceholder =
+      section.dataset.popupSizePlaceholder || 'Choose your size';
     const currencyCode = section.dataset.currency || 'USD';
 
     /* ==========================================================
@@ -1847,7 +2066,8 @@ justify-content: center;
       group.className = 'shoppable-variant-group';
       const label = document.createElement('div');
       label.className = 'shoppable-variant-label';
-      label.textContent = option.name;
+      label.textContent =
+        isAdvancedPopup && type === 'color' ? advancedColorLabel : option.name;
       group.appendChild(label);
       const optionsContainer = document.createElement('div');
       optionsContainer.className = 'shoppable-variant-options';
@@ -1894,7 +2114,7 @@ justify-content: center;
       group.className = 'shoppable-variant-group';
       const label = document.createElement('div');
       label.className = 'shoppable-variant-label';
-      label.textContent = 'CHOOSE SIZE';
+      label.textContent = isAdvancedPopup ? advancedSizeLabel : 'CHOOSE SIZE';
       group.appendChild(label);
       const dropdown = document.createElement('div');
       dropdown.className = 'shoppable-size-dropdown';
@@ -1910,7 +2130,9 @@ justify-content: center;
       trigger.setAttribute('aria-expanded', 'false');
       const currentText = document.createElement('span');
       currentText.className = 'shoppable-size-dropdown-current is-placeholder';
-      currentText.textContent = 'Choose Size';
+      currentText.textContent = isAdvancedPopup
+        ? advancedSizePlaceholder
+        : 'Choose Size';
       const arrow = document.createElement('span');
       arrow.className = 'shoppable-size-dropdown-arrow';
       arrow.setAttribute('aria-hidden', 'true');
@@ -2162,7 +2384,9 @@ justify-content: center;
           currentText.textContent = selectedSize;
           currentText.classList.remove('is-placeholder');
         } else {
-          currentText.textContent = 'Choose Size';
+          currentText.textContent = isAdvancedPopup
+            ? advancedSizePlaceholder
+            : 'Choose Size';
           currentText.classList.add('is-placeholder');
         }
       }
@@ -2219,7 +2443,7 @@ justify-content: center;
       /* ---- Add-to-cart label + enabled state ---- */
       if (selectedVariant && selectedVariant.available) {
         addToCartButton.disabled = false;
-        addText.textContent = 'ADD TO CART';
+        addText.textContent = addToCartLabel;
       } else {
         addToCartButton.disabled = true;
         const hasSizeOption = currentOptions.some(function (option) {
@@ -2846,6 +3070,23 @@ justify-content: center;
     {
       "type": "header",
       "content": "Product popup"
+    },
+    {
+      "type": "select",
+      "id": "popup_design",
+      "label": "Popup design",
+      "info": "Customize the Advanced popup in Theme settings under Shoppable popup.",
+      "options": [
+        {
+          "value": "old",
+          "label": "Old popup"
+        },
+        {
+          "value": "advanced",
+          "label": "Advanced popup"
+        }
+      ],
+      "default": "advanced"
     },
     {
       "type": "text",

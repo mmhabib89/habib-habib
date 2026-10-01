@@ -1477,5 +1477,242 @@
         "info": "This product is added when a customer adds a product with Color Black and Size M or Medium to their cart."
       }
     ]
+  },
+  {
+    "name": "Shoppable popup",
+    "settings": [
+      {
+        "type": "paragraph",
+        "content": "These settings customize the Advanced popup design on shoppable image grids."
+      },
+      {
+        "type": "range",
+        "id": "advanced_popup_width",
+        "label": "Popup width",
+        "min": 320,
+        "max": 760,
+        "step": 10,
+        "unit": "px",
+        "default": 420
+      },
+      {
+        "type": "range",
+        "id": "advanced_popup_padding",
+        "label": "Content padding",
+        "min": 8,
+        "max": 40,
+        "step": 2,
+        "unit": "px",
+        "default": 22
+      },
+      {
+        "type": "range",
+        "id": "advanced_popup_image_width",
+        "label": "Image column width",
+        "min": 25,
+        "max": 50,
+        "step": 1,
+        "unit": "%",
+        "default": 40
+      },
+      {
+        "type": "select",
+        "id": "advanced_popup_image_ratio",
+        "label": "Popup image shape",
+        "options": [
+          {
+            "value": "5 / 6",
+            "label": "Portrait"
+          },
+          {
+            "value": "1 / 1",
+            "label": "Square"
+          }
+        ],
+        "default": "5 / 6"
+      },
+      {
+        "type": "color",
+        "id": "advanced_popup_background",
+        "label": "Popup background",
+        "default": "#FFFFFF"
+      },
+      {
+        "type": "color",
+        "id": "advanced_popup_text_color",
+        "label": "Popup text color",
+        "default": "#111111"
+      },
+      {
+        "type": "color",
+        "id": "advanced_popup_border_color",
+        "label": "Popup border color",
+        "default": "#111111"
+      },
+      {
+        "type": "range",
+        "id": "advanced_popup_border_width",
+        "label": "Popup border width",
+        "min": 0,
+        "max": 4,
+        "step": 1,
+        "unit": "px",
+        "default": 1
+      },
+      {
+        "type": "range",
+        "id": "advanced_popup_corner_radius",
+        "label": "Popup corner radius",
+        "min": 0,
+        "max": 20,
+        "step": 1,
+        "unit": "px",
+        "default": 0
+      },
+      {
+        "type": "range",
+        "id": "advanced_popup_overlay_opacity",
+        "label": "Overlay opacity",
+        "min": 0,
+        "max": 90,
+        "step": 5,
+        "unit": "%",
+        "default": 55
+      },
+      {
+        "type": "range",
+        "id": "advanced_popup_title_size",
+        "label": "Title size",
+        "min": 12,
+        "max": 28,
+        "step": 1,
+        "unit": "px",
+        "default": 16
+      },
+      {
+        "type": "range",
+        "id": "advanced_popup_body_size",
+        "label": "Price and description size",
+        "min": 11,
+        "max": 18,
+        "step": 1,
+        "unit": "px",
+        "default": 14
+      },
+      {
+        "type": "range",
+        "id": "advanced_popup_label_size",
+        "label": "Variant label size",
+        "min": 10,
+        "max": 16,
+        "step": 1,
+        "unit": "px",
+        "default": 13
+      },
+      {
+        "type": "range",
+        "id": "advanced_popup_info_padding",
+        "label": "Product information padding",
+        "min": 4,
+        "max": 24,
+        "step": 2,
+        "unit": "px",
+        "default": 12
+      },
+      {
+        "type": "range",
+        "id": "advanced_popup_control_height",
+        "label": "Variant control height",
+        "min": 38,
+        "max": 60,
+        "step": 1,
+        "unit": "px",
+        "default": 42
+      },
+      {
+        "type": "text",
+        "id": "advanced_popup_color_label",
+        "label": "Color option label",
+        "default": "Color"
+      },
+      {
+        "type": "text",
+        "id": "advanced_popup_size_label",
+        "label": "Size option label",
+        "default": "Size"
+      },
+      {
+        "type": "text",
+        "id": "advanced_popup_size_placeholder",
+        "label": "Size dropdown placeholder",
+        "default": "Choose your size"
+      },
+      {
+        "type": "color",
+        "id": "advanced_popup_control_border",
+        "label": "Variant border color",
+        "default": "#111111"
+      },
+      {
+        "type": "color",
+        "id": "advanced_popup_selected_background",
+        "label": "Selected and hover background",
+        "default": "#000000"
+      },
+      {
+        "type": "color",
+        "id": "advanced_popup_selected_text",
+        "label": "Selected and hover text",
+        "default": "#FFFFFF"
+      },
+      {
+        "type": "text",
+        "id": "advanced_popup_button_label",
+        "label": "Add to cart button text",
+        "default": "ADD TO CART"
+      },
+      {
+        "type": "color",
+        "id": "advanced_popup_button_background",
+        "label": "Add to cart button background",
+        "default": "#000000"
+      },
+      {
+        "type": "color",
+        "id": "advanced_popup_button_text",
+        "label": "Add to cart button text color",
+        "default": "#FFFFFF"
+      },
+      {
+        "type": "range",
+        "id": "advanced_popup_button_height",
+        "label": "Add to cart button height",
+        "min": 40,
+        "max": 70,
+        "step": 1,
+        "unit": "px",
+        "default": 45
+      },
+      {
+        "type": "range",
+        "id": "advanced_popup_button_size",
+        "label": "Add to cart button text size",
+        "min": 11,
+        "max": 18,
+        "step": 1,
+        "unit": "px",
+        "default": 13
+      },
+      {
+        "type": "range",
+        "id": "advanced_popup_button_radius",
+        "label": "Add to cart button corner radius",
+        "min": 0,
+        "max": 20,
+        "step": 1,
+        "unit": "px",
+        "default": 0
+      }
+    ]
   }
 ]
