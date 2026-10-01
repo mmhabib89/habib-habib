@@ -128,8 +128,6 @@
               --hotspot-size: {{ block.settings.hotspot_size }}px;
               --hotspot-background: {{ block.settings.hotspot_color }};
               --hotspot-icon-color: {{ block.settings.hotspot_icon_color }};
-              --hotspot-border-color: {{ block.settings.hotspot_border_color }};
-              --hotspot-border-width: {{ block.settings.hotspot_border_width }}px;
               --hotspot-shadow-opacity: {{ block.settings.hotspot_shadow_opacity | divided_by: 100.0 }};
               --hotspot-hover-scale: {{ block.settings.hotspot_hover_scale | divided_by: 100.0 }};
             "
@@ -184,7 +182,7 @@
                 data-product-variants="{{ product_variants_json | escape }}"
                 data-product-options="{{ product_options_json | escape }}"
               >
-                <span class="shoppable-hotspot-icon">+</span>
+                <span class="shoppable-hotspot-icon" aria-hidden="true"></span>
               </button>
             {% endif %}
 
@@ -507,7 +505,7 @@
     padding: 0;
     margin: 0;
 
-    border: var(--hotspot-border-width) solid var(--hotspot-border-color);
+    border: 0;
     border-radius: 50%;
 
     background: var(--hotspot-background);
@@ -539,13 +537,32 @@
   }
 
   #{{ section_id }} .shoppable-hotspot-icon {
+    position: relative;
     display: block;
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: calc(var(--hotspot-size) * 0.55);
-    line-height: 1;
-    font-weight: 300;
-    transform: translateY(-1px); /* optical centering of the + glyph */
+    flex: 0 0 10px;
+    width: 10px;
+    height: 10px;
     pointer-events: none;
+  }
+
+  #{{ section_id }} .shoppable-hotspot-icon::before,
+  #{{ section_id }} .shoppable-hotspot-icon::after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    content: '';
+    background: currentColor;
+    transform: translate(-50%, -50%);
+  }
+
+  #{{ section_id }} .shoppable-hotspot-icon::before {
+    width: 10px;
+    height: 2px;
+  }
+
+  #{{ section_id }} .shoppable-hotspot-icon::after {
+    width: 2px;
+    height: 10px;
   }
 
   /* ==========================================================
@@ -2979,22 +2996,6 @@ justify-content: center;
           "id": "hotspot_icon_color",
           "label": "Hotspot icon color",
           "default": "#000"
-        },
-        {
-          "type": "color",
-          "id": "hotspot_border_color",
-          "label": "Hotspot border color",
-          "default": "#FFFFFF"
-        },
-        {
-          "type": "range",
-          "id": "hotspot_border_width",
-          "label": "Hotspot border width",
-          "min": 0,
-          "max": 5,
-          "step": 1,
-          "unit": "px",
-          "default": 1
         },
         {
           "type": "range",

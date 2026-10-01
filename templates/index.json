@@ -174,8 +174,6 @@
             "hotspot_size": 24,
             "hotspot_color": "#f5f5f5",
             "hotspot_icon_color": "#000",
-            "hotspot_border_color": "#ffffff",
-            "hotspot_border_width": 1,
             "hotspot_shadow_opacity": 20,
             "hotspot_hover_scale": 115
           }
@@ -190,8 +188,6 @@
             "hotspot_size": 24,
             "hotspot_color": "#f5f5f5",
             "hotspot_icon_color": "#000",
-            "hotspot_border_color": "#ffffff",
-            "hotspot_border_width": 1,
             "hotspot_shadow_opacity": 20,
             "hotspot_hover_scale": 115
           }
@@ -206,8 +202,6 @@
             "hotspot_size": 24,
             "hotspot_color": "#f5f5f5",
             "hotspot_icon_color": "#000",
-            "hotspot_border_color": "#ffffff",
-            "hotspot_border_width": 1,
             "hotspot_shadow_opacity": 20,
             "hotspot_hover_scale": 115
           }
@@ -222,8 +216,6 @@
             "hotspot_size": 24,
             "hotspot_color": "#f5f5f5",
             "hotspot_icon_color": "#000",
-            "hotspot_border_color": "#ffffff",
-            "hotspot_border_width": 1,
             "hotspot_shadow_opacity": 20,
             "hotspot_hover_scale": 115
           }
@@ -238,8 +230,6 @@
             "hotspot_size": 24,
             "hotspot_color": "#f5f5f5",
             "hotspot_icon_color": "#000",
-            "hotspot_border_color": "#ffffff",
-            "hotspot_border_width": 1,
             "hotspot_shadow_opacity": 20,
             "hotspot_hover_scale": 115
           }
@@ -254,8 +244,6 @@
             "hotspot_size": 24,
             "hotspot_color": "#f5f5f5",
             "hotspot_icon_color": "#000",
-            "hotspot_border_color": "#ffffff",
-            "hotspot_border_width": 1,
             "hotspot_shadow_opacity": 20,
             "hotspot_hover_scale": 115
           }
