@@ -153,7 +153,7 @@
         "content_position": "bottom-left",
         "content_max_width": 500,
         "hero_padding_x": 20,
-        "hero_padding_y": 20,
+        "hero_padding_y": 50,
         "hero_padding_x_tablet": 40,
         "hero_padding_y_tablet": 60,
         "hero_padding_x_mobile": 25,
