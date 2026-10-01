@@ -128,12 +128,13 @@
     "cart_drawer_collection": "",
     "cart_color_scheme": "scheme-1",
     "customer_account_menu": "customer-account-main-menu",
-    "advanced_popup_padding": 10,
+    "advanced_popup_padding": 20,
     "advanced_popup_text_color": "#000000",
     "advanced_popup_border_color": "#000000",
     "advanced_popup_border_width": 0,
     "advanced_popup_shadow_opacity": 10,
     "advanced_popup_title_size": 16,
+    "advanced_popup_label_size": 14,
     "advanced_popup_control_height": 40,
     "sections": {
       "main-password-header": {
