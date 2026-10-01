@@ -136,6 +136,10 @@
     "advanced_popup_title_size": 16,
     "advanced_popup_label_size": 14,
     "advanced_popup_control_height": 40,
+    "advanced_popup_arrow_width": 12,
+    "advanced_popup_arrow_height": 6,
+    "advanced_popup_control_border": "#000000",
+    "advanced_popup_button_size": 16,
     "sections": {
       "main-password-header": {
         "type": "main-password-header",
