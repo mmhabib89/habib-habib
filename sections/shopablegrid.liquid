@@ -1445,18 +1445,17 @@ justify-content: center;
       position: absolute;
       top: 50%;
       left: 50%;
-      width: 9px;
-      height: 9px;
-      border: 0;
-      border-right: 1.5px solid currentColor;
-      border-bottom: 1.5px solid currentColor;
+      width: {{ settings.advanced_popup_arrow_width }}px;
+      height: {{ settings.advanced_popup_arrow_height }}px;
+      background: currentColor;
+      clip-path: polygon(0 0, 15% 0, 50% 70%, 85% 0, 100% 0, 50% 100%);
       content: '';
-      transform: translate(-50%, -50%) rotate(45deg);
+      transform: translate(-50%, -50%);
       transition: transform 0.18s ease;
     }
 
     #{{ section_id }} .shoppable-product-popup--advanced .shoppable-size-dropdown.is-open .shoppable-size-dropdown-arrow::before {
-      transform: translate(-50%, -50%) rotate(225deg);
+      transform: translate(-50%, -50%) rotate(180deg);
     }
 
     #{{ section_id }} .shoppable-product-popup--advanced .shoppable-size-dropdown.is-open .shoppable-size-dropdown-arrow {

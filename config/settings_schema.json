@@ -1680,6 +1680,26 @@
         "default": 42
       },
       {
+        "type": "range",
+        "id": "advanced_popup_arrow_width",
+        "label": "Size dropdown arrow width",
+        "min": 6,
+        "max": 24,
+        "step": 1,
+        "unit": "px",
+        "default": 12
+      },
+      {
+        "type": "range",
+        "id": "advanced_popup_arrow_height",
+        "label": "Size dropdown arrow height",
+        "min": 3,
+        "max": 12,
+        "step": 1,
+        "unit": "px",
+        "default": 6
+      },
+      {
         "type": "text",
         "id": "advanced_popup_color_label",
         "label": "Color option label",
