@@ -1642,7 +1642,7 @@
       {
         "type": "range",
         "id": "advanced_popup_body_size",
-        "label": "Price and description size",
+        "label": "Price, description and selected size text size",
         "min": 11,
         "max": 18,
         "step": 1,
