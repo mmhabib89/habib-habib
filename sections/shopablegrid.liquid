@@ -19,7 +19,7 @@
   - Variant options are typed (color / size / normal) and rendered as
     buttons, or as a custom dropdown for Size.
   - When the selected option combo is "Black + Medium" AND a bundle product
-    is configured, that bundle variant is auto-added to the cart too.
+    is configured, its first available variant is auto-added to the cart.
   - Colors are mapped to a hex swatch via getColorCode() (see script).
   ============================================================================
 {% endcomment %}
@@ -34,7 +34,7 @@
   # variant is added to the cart as a free/first bundle item.
   assign bundle_product = section.settings.bundle_product
   if bundle_product != blank
-    assign bundle_variant = bundle_product.selected_or_first_available_variant
+    assign bundle_variant = bundle_product.first_available_variant
     if bundle_variant != blank and bundle_variant.available
       assign bundle_variant_id = bundle_variant.id
     else
@@ -274,7 +274,10 @@
             class="shoppable-product-popup-variants"
             data-popup-variants
           ></div>
-          {% if bundle_product != blank %}
+          {% if bundle_product != blank
+            and section.settings.show_bundle_product_ui
+            and bundle_variant_id != 0
+          %}
             {% assign bundle_variant_image = bundle_variant.featured_image | default: bundle_product.featured_image %}
             <div class="shoppable-bundle-variant" data-bundle-variant-picker hidden>
               <div class="shoppable-bundle-variant-header">
@@ -286,50 +289,18 @@
                       width="120"
                       height="144"
                       loading="lazy"
-                      data-bundle-variant-image
                     >
                   {% endif %}
                 </div>
                 <div class="shoppable-bundle-variant-copy">
                   <p class="shoppable-bundle-variant-congratulations">Congratulations!</p>
-                  <h4 class="shoppable-bundle-variant-title">Choose your free {{ bundle_product.title | escape }}</h4>
-                  <p class="shoppable-bundle-variant-selected" data-bundle-variant-title>{{ bundle_variant.title | escape }}</p>
-                  <p class="shoppable-bundle-variant-description">Select your preferred option below.</p>
+                  <h4 class="shoppable-bundle-variant-title">Your free {{ bundle_product.title | escape }}</h4>
+                  <p class="shoppable-bundle-variant-selected">{{ bundle_variant.title | escape }}</p>
+                  <p class="shoppable-bundle-variant-description">
+                    The default available option will be added automatically.
+                  </p>
                 </div>
               </div>
-              {% if bundle_product.variants_count > 1 %}
-                <div class="shoppable-bundle-variant-field">
-                  <label class="shoppable-variant-label" for="ShoppableBundleVariant-{{ section.id }}">
-                    Gift variant
-                  </label>
-                  <select
-                    id="ShoppableBundleVariant-{{ section.id }}"
-                    class="shoppable-bundle-variant-select"
-                    data-bundle-variant
-                    {% unless bundle_variant.available %}
-                      disabled
-                    {% endunless %}
-                  >
-                    {% for gift_variant in bundle_product.variants %}
-                      {% if gift_variant.available %}
-                        {% assign gift_variant_image = gift_variant.featured_image | default: bundle_product.featured_image %}
-                        <option
-                          value="{{ gift_variant.id }}"
-                          data-variant-image="{% if gift_variant_image != blank %}{{ gift_variant_image | image_url: width: 240 }}{% endif %}"
-                          data-variant-image-alt="{{ bundle_product.title | append: ' ' | append: gift_variant.title | escape }}"
-                          {% if gift_variant.id == bundle_variant.id %}
-                            selected
-                          {% endif %}
-                        >
-                          {{- gift_variant.title | escape -}}
-                        </option>
-                      {% endif %}
-                    {% endfor %}
-                  </select>
-                </div>
-              {% else %}
-                <input type="hidden" data-bundle-variant value="{% if bundle_variant.available %}{{ bundle_variant.id }}{% endif %}">
-              {% endif %}
             </div>
           {% endif %}
           <!-- ADD TO CART — stays disabled until every option is selected -->
@@ -1236,17 +1207,6 @@ justify-content: center;
     line-height: 1.4;
   }
 
-  #{{ section_id }} .shoppable-bundle-variant-select {
-    width: 100%;
-    min-height: 44px;
-    padding: 10px 12px;
-    border: 1px solid #dedbd5;
-    border-radius: 5px;
-    background: #fff;
-    color: #111;
-    font: inherit;
-  }
-
   #{{ section_id }} .shoppable-bundle-variant {
     margin: 16px 0;
     padding: 14px;
@@ -1307,14 +1267,6 @@ justify-content: center;
     margin-bottom: 3px;
     color: #171614;
     font-weight: 600;
-  }
-
-  #{{ section_id }} .shoppable-bundle-variant-field {
-    margin-top: 14px;
-  }
-
-  #{{ section_id }} .shoppable-bundle-variant-field .shoppable-variant-label {
-    margin-bottom: 7px;
   }
 
   #{{ section_id }} .shoppable-product-popup-view:hover {
@@ -1618,9 +1570,6 @@ justify-content: center;
     const popupVariants = section.querySelector('[data-popup-variants]');
     const popupStatus = section.querySelector('[data-popup-status]');
     const bundleVariantPicker = section.querySelector('[data-bundle-variant-picker]');
-    const bundleVariantSelect = section.querySelector('[data-bundle-variant]');
-    const bundleVariantImage = section.querySelector('[data-bundle-variant-image]');
-    const bundleVariantTitle = section.querySelector('[data-bundle-variant-title]');
     const popupLink = section.querySelector('[data-popup-link]');
     const addToCartButton = section.querySelector('[data-popup-add-to-cart]');
     const addText = section.querySelector('[data-add-text]');
@@ -2329,9 +2278,7 @@ justify-content: center;
         return;
       }
       const bundleRequired = shouldAddBundle(selectedVariant);
-      const selectedBundleVariantId = Number(
-        bundleVariantSelect?.value || defaultBundleVariantId
-      );
+      const selectedBundleVariantId = defaultBundleVariantId;
       if (bundleRequired && !selectedBundleVariantId) {
         popupStatus.textContent = section.dataset.cartErrorMessage;
         return;
@@ -2536,22 +2483,6 @@ justify-content: center;
     if (addToCartButton) {
       addToCartButton.addEventListener('click', addToCart);
     }
-    if (bundleVariantSelect) {
-      bundleVariantSelect.addEventListener('change', function () {
-        const selectedOption = bundleVariantSelect.selectedOptions[0];
-        if (selectedOption) {
-          if (bundleVariantImage && selectedOption.dataset.variantImage) {
-            bundleVariantImage.src = selectedOption.dataset.variantImage;
-            bundleVariantImage.alt = selectedOption.dataset.variantImageAlt || '';
-          }
-          if (bundleVariantTitle) {
-            bundleVariantTitle.textContent = selectedOption.textContent.trim();
-          }
-        }
-        popupStatus.textContent = '';
-      });
-    }
-
     /* ---- Close buttons (X + overlay) ---- */
     closeButtons.forEach(function (button) {
       button.addEventListener('click', function () {
@@ -2927,6 +2858,13 @@ justify-content: center;
       "id": "bundle_product",
       "label": "Automatic bundle product",
       "info": "When the selected product variant is Black + Medium, this product's first available variant is automatically added to the cart. Select Soft Winter Jacket here."
+    },
+    {
+      "type": "checkbox",
+      "id": "show_bundle_product_ui",
+      "label": "Show automatic gift product details",
+      "info": "Show or hide the gift details in the product popup. The gift is still added automatically when eligible.",
+      "default": true
     }
   ],
   "blocks": [
