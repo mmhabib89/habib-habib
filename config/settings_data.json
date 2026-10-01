@@ -132,7 +132,8 @@
     "advanced_popup_text_color": "#000000",
     "advanced_popup_border_color": "#000000",
     "advanced_popup_border_width": 0,
-    "advanced_popup_title_size": 18,
+    "advanced_popup_shadow_opacity": 10,
+    "advanced_popup_title_size": 16,
     "sections": {
       "main-password-header": {
         "type": "main-password-header",
