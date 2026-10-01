@@ -1012,17 +1012,19 @@
 
   /* Chevron drawn with borders (rotates when open) */
   #{{ section_id }} .shoppable-size-dropdown-arrow {
-    flex: 0 0 auto;
+    position: absolute;
+    top: 50%;
+    right: 15px;
     width: 8px;
     height: 8px;
     border-right: 1.5px solid #000;
     border-bottom: 1.5px solid #000;
-    transform: rotate(45deg) translateY(-2px);
+    transform: translateY(-50%) rotate(45deg);
     transition: transform 0.18s ease;
   }
 
   #{{ section_id }} .shoppable-size-dropdown.is-open .shoppable-size-dropdown-arrow {
-    transform: rotate(225deg) translateY(-1px);
+    transform: translateY(-50%) rotate(225deg);
   }
 
   /* ==========================================================
