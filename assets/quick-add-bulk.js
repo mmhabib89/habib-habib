@@ -114,41 +114,88 @@ if (!customElements.get('quick-add-bulk')) {
       updateMultipleQty(items) {
         this.selectProgressBar().classList.remove('hidden');
 
-        const ids = Object.keys(items);
-        const linesUpdate = this.startCartLinesUpdate(items);
-        const body = JSON.stringify({
-          updates: items,
-          sections: this.getSectionsToRender().map((section) => section.section),
-          sections_url: this.getSectionsUrl(),
-        });
+        const giftVariantId = Number(this.dataset.autoGiftVariantId || 0);
+        const giftProductId = Number(this.dataset.autoGiftProductId || 0);
+        const currentVariantId = Number(this.dataset.index);
+        const qualifiesForGift = this.dataset.autoGiftQualifies === 'true';
+        const requestedQuantity = Number(items[currentVariantId] || 0);
 
-        fetch(`${routes.cart_update_url}`, { ...fetchConfig(), ...{ body } })
-          .then((response) => response.json())
-          .then((parsedState) => {
-            if (parsedState.errors) {
-              throw Object.assign(new Error(parsedState.errors), { code: 'INVALID' });
-            }
+        const updateCart = (updates) => {
+          const ids = Object.keys(updates);
+          const linesUpdate = this.startCartLinesUpdate(updates);
+          const body = JSON.stringify({
+            updates,
+            sections: this.getSectionsToRender().map((section) => section.section),
+            sections_url: this.getSectionsUrl(),
+          });
 
-            linesUpdate?.resolve(parsedState);
-            this.renderSections(parsedState, ids);
-            publish(PUB_SUB_EVENTS.cartUpdate, { source: 'quick-add', cartData: parsedState });
-          })
-          .catch((e) => {
-            if (e.code !== 'INVALID') console.error(e);
+          fetch(`${routes.cart_update_url}`, { ...fetchConfig(), ...{ body } })
+            .then((response) => response.json())
+            .then((parsedState) => {
+              if (parsedState.errors) {
+                throw Object.assign(new Error(parsedState.errors), { code: 'INVALID' });
+              }
+              if (
+                qualifiesForGift &&
+                requestedQuantity > 0 &&
+                !(parsedState.items || []).some((item) => Number(item.product_id) === giftProductId)
+              ) {
+                throw Object.assign(new Error(window.cartStrings.error), { code: 'INVALID' });
+              }
+
+              linesUpdate?.resolve(parsedState);
+              this.renderSections(parsedState, ids);
+              publish(PUB_SUB_EVENTS.cartUpdate, { source: 'quick-add', cartData: parsedState });
+            })
+            .catch((e) => {
+              if (e.code !== 'INVALID') console.error(e);
+              this.dispatchCartErrorEvent(
+                e.code === 'INVALID' ? e.message : window.cartStrings.error,
+                e.code || 'SERVICE_UNAVAILABLE'
+              );
+              linesUpdate?.reject(e);
+            })
+            .finally(() => {
+              this.selectProgressBar().classList.add('hidden');
+              this.setRequestStarted(false);
+            });
+        };
+
+        if (!qualifiesForGift || requestedQuantity <= 0 || !giftVariantId || !giftProductId) {
+          if (qualifiesForGift && requestedQuantity > 0 && (!giftVariantId || !giftProductId)) {
             this.dispatchCartErrorEvent(
-              e.code === 'INVALID' ? e.message : window.cartStrings.error,
-              e.code || 'SERVICE_UNAVAILABLE'
+              this.dataset.autoGiftErrorMessage || window.cartStrings.error,
+              'INVALID'
             );
-            linesUpdate?.reject(e);
-            // Commented out for now and will be fixed when BE issue is done https://github.com/Shopify/shopify/issues/440605
-            // e.target.setCustomValidity(error);
-            // e.target.reportValidity();
-            // this.resetQuantityInput(ids[index]);
-            // this.selectProgressBar().classList.add('hidden');
-            // e.target.select();
-            // this.cleanErrorMessageOnType(e);
+            this.selectProgressBar().classList.add('hidden');
+            this.setRequestStarted(false);
+            return;
+          }
+          updateCart(items);
+          return;
+        }
+
+        fetch(`${routes.cart_url}.js`, { headers: { Accept: 'application/json' } })
+          .then((response) => {
+            if (!response.ok) throw new Error(window.cartStrings.error);
+            return response.json();
           })
-          .finally(() => {
+          .then((cart) => {
+            const giftAlreadyInCart = (cart.items || []).some(
+              (item) => Number(item.product_id) === giftProductId
+            );
+            const updates = { ...items };
+            if (!giftAlreadyInCart && giftVariantId !== currentVariantId) {
+              updates[giftVariantId] = 1;
+            }
+            updateCart(updates);
+          })
+          .catch((error) => {
+            console.error('Unable to add the automatic gift from quick add.', error);
+            this.dispatchCartErrorEvent(
+              this.dataset.autoGiftErrorMessage || window.cartStrings.error,
+              'SERVICE_UNAVAILABLE'
+            );
             this.selectProgressBar().classList.add('hidden');
             this.setRequestStarted(false);
           });
