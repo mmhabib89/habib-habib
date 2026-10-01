@@ -137,7 +137,7 @@
       ],
       "name": "Advanced hero banner",
       "settings": {
-        "desktop_image": "shopify://shop_images/hero_bg.png",
+        "desktop_image": "shopify://shop_images/hero_white_bg.jpg",
         "desktop_image_position_x": 50,
         "desktop_image_position_y": 50,
         "mobile_image_position_x": 40,
@@ -150,7 +150,7 @@
         "hero_min_height_tablet": 700,
         "hero_min_height_mobile": 650,
         "content_position": "bottom-left",
-        "content_max_width": 650,
+        "content_max_width": 550,
         "hero_padding_x": 20,
         "hero_padding_y": 60,
         "hero_padding_x_tablet": 40,
