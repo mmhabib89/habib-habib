@@ -1,0 +1,260 @@
+{% render 'section-margin' %}
+{{ 'collection.css' | asset_url | stylesheet_tag }}
+{%- comment -%} Meridian —  main-collection.liquid — Full build Phase 3 + filtering/swatch filters {%- endcomment -%}
+{%- assign per_row = settings.collection_products_per_row | default: 3 -%}
+{%- assign per_row_tablet = settings.collection_products_per_row_tablet | default: 3 | at_most: per_row -%}
+{%- assign per_row_mobile = settings.collection_products_per_row_mobile | default: 2 -%}
+{%- assign per_page = settings.collection_products_per_page | default: 24 -%}
+{%- assign img_ratio = settings.collection_image_ratio | default: 'portrait' -%}
+{%- assign card_layout = section.settings.card_layout | default: settings.product_card_layout | default: 'stacked' -%}
+{%- assign collection_layout = section.settings.collection_layout | default: 'grid' -%}
+<div class="page-shell color-{{ section.settings.color_scheme | default: 'scheme-1' }}">
+  <div class="clx-hero" style="padding-top:{{ section.settings.hero_padding_top | default: 48 }}px;padding-bottom:{{ section.settings.hero_padding_bottom | default: 56 }}px;">
+    <div class="page-width">
+      {%- render 'breadcrumbs', class: 'crumb mb-16' -%}
+      {%- if settings.collection_show_image and collection.image -%}
+        <div class="clip mb-24">
+          <img src="{{ collection.image | image_url: width: 1440 }}" srcset="{{ collection.image | image_url: width: 1080 }} 1080w,
+                    {{ collection.image | image_url: width: 1440 }} 1440w,
+                    {{ collection.image | image_url: width: 2160 }} 2160w" sizes="(max-width:1200px) 100vw, 100vw" alt="{{ collection.image.alt | escape | default: collection.title }}" class="img-cover ratio-3x1" style="object-position: {{ collection.image.presentation.focal_point | default: 'center' }};" loading="eager" width="1440" height="480">
+        </div>
+      {%- endif -%}
+      <div class="clx-head">
+        <div class="clx-head__text">
+          <h1 class="h-serif h-64 lh-1 mb-10">{{ collection.title }}</h1>
+          <p class="t-body t-13 clx-product-count">{{ 'products.collection.products_count' | t: count: collection.products_count }}</p>
+          {%- if settings.collection_show_description and collection.description != blank -%}
+            {%- assign desc_word_limit = settings.collection_description_words | default: 40 -%}
+            {%- assign desc_word_count = collection.description | strip_html | split: ' ' | size -%}
+            <div class="clx-desc rte">
+              {%- if desc_word_count > desc_word_limit -%}
+                <div data-clx-desc-short>{{ collection.description | strip_html | truncatewords: desc_word_limit }}</div>
+                <div id="clx-desc-full-{{ section.id }}" data-clx-desc-full hidden>{{ collection.description }}</div>
+                <button
+                  type="button"
+                  class="clx-desc__toggle"
+                  aria-expanded="false"
+                  aria-controls="clx-desc-full-{{ section.id }}"
+                  data-clx-desc-toggle
+                  data-more="{{ 'products.collection.show_more' | t | escape }}"
+                  data-less="{{ 'products.collection.show_less' | t | escape }}"
+                >{{ 'products.collection.show_more' | t }}</button>
+              {%- else -%}
+                {{ collection.description }}
+              {%- endif -%}
+            </div>
+          {%- endif -%}
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="page-width" style="padding-top:{{ section.settings.padding_top | default: 56 }}px;padding-bottom:{{ section.settings.padding_bottom | default: 100 }}px;">
+    {%- assign sort_by = collection.sort_by | default: collection.default_sort_by -%}
+    {%- if collection.products.size == 0 and collection.filters.size == 0 -%}
+      <p class="t-body t-16 text-center py-80">{{ 'products.collection.empty' | t }}</p>
+    {%- else -%}
+      <div class="clx-layout{% if settings.collection_show_filter %} clx-layout--filters{% endif %}">
+        <!-- Filters sidebar -->
+        {%- if settings.collection_show_filter -%}
+          <button type="button" class="clx-mobile-filter-btn" data-filter-open aria-controls="FacetFilterForm-{{ section.id }}" aria-expanded="false">{{ 'products.facets.mobile_filter_button' | t }}</button>
+          {%- assign facet_clear_url = collection.url | append: '?sort_by=' | append: sort_by -%}
+          {%- assign facet_form_id = 'FacetFilterForm-' | append: section.id -%}
+          {%- render 'facet-filters',
+              filters: collection.filters,
+              form_action: collection.url,
+              sort_by: sort_by,
+              clear_url: facet_clear_url,
+              form_id: facet_form_id -%}
+        {%- endif -%}
+
+        <!-- Product grid -->
+        <div class="clx-products" data-collection-results aria-busy="false">
+          {%- if settings.collection_show_sort -%}
+            <form method="get" action="{{ collection.url }}" class="clx-product-toolbar">
+              <span class="clx-product-toolbar__label">{{ 'products.collection.sort_label' | t }}</span>
+              <input type="hidden" name="sort_by" value="{{ sort_by }}">
+              <select name="sort_by" class="clx-sort" aria-label="{{ 'products.collection.sort_label' | t }}">
+                <option value="manual"{% if sort_by == 'manual' %} selected{% endif %}>{{ 'products.collection.sort_featured' | t }}</option>
+                <option value="price-ascending"{% if sort_by == 'price-ascending' %} selected{% endif %}>{{ 'products.collection.sort_price_ascending' | t }}</option>
+                <option value="price-descending"{% if sort_by == 'price-descending' %} selected{% endif %}>{{ 'products.collection.sort_price_descending' | t }}</option>
+                <option value="created-descending"{% if sort_by == 'created-descending' %} selected{% endif %}>{{ 'products.collection.sort_newest' | t }}</option>
+                <option value="best-selling"{% if sort_by == 'best-selling' %} selected{% endif %}>{{ 'products.collection.sort_best_selling' | t }}</option>
+              </select>
+              <noscript><button type="submit" class="clx-go-btn">{{ 'cart.apply' | t }}</button></noscript>
+            </form>
+          {%- endif -%}
+          <div class="clx-active-filters" data-active-filters aria-live="polite">
+            {%- for filter in collection.filters -%}
+              {%- for value in filter.active_values -%}
+                <a href="{{ value.url_to_remove }}" class="clx-filter-chip" data-facet-clear>{{ value.label }} <span aria-hidden="true">×</span></a>
+              {%- endfor -%}
+            {%- endfor -%}
+          </div>
+          {%- paginate collection.products by per_page -%}
+            <div id="product-grid-{{ section.id }}" data-section-id="{{ section.id }}" class="clx-products-grid clx-products-grid--{{ collection_layout }}" style="--grid-cols:{{ per_row }};--grid-cols-tablet:{{ per_row_tablet }};--grid-cols-mobile:{{ per_row_mobile }};" aria-live="polite">
+              {%- if collection.products.size == 0 -%}
+                <p class="t-body t-16 text-center py-80 clx-grid__empty">{{ 'products.collection.empty' | t }}</p>
+              {%- else -%}
+                {%- for product in collection.products -%}
+                  <div>
+                    {%- render 'product-card', product: product, image_ratio: img_ratio, show_vendor: false, show_rating: true, card_layout: card_layout -%}
+                  </div>
+                {%- endfor -%}
+              {%- endif -%}
+            </div>
+
+            {%- if collection.products.size > 0 -%}
+              {%- assign pagination_style = settings.collection_pagination_style | default: 'paginated' -%}
+              {%- if paginate.pages > 1 -%}
+                {%- if pagination_style == 'paginated' -%}
+                  <div class="clx-pagination" data-pagination>{{- paginate | default_pagination -}}</div>
+                {%- elsif pagination_style == 'load_more' -%}
+                  <div class="text-center mt-64" data-pagination>
+                    {%- if paginate.next -%}
+                      <button type="button" id="load-more-{{ section.id }}" data-next-url="{{ paginate.next.url }}" data-section-id="{{ section.id }}" class="btn btn--primary">{{ 'products.collection.load_more' | t }}</button>
+                    {%- endif -%}
+                  </div>
+                {%- elsif pagination_style == 'infinite' -%}
+                  <div id="infinite-sentinel-{{ section.id }}" data-next-url="{{ paginate.next.url }}" data-section-id="{{ section.id }}" class="clx-sentinel" data-pagination></div>
+                  <p id="infinite-loading-{{ section.id }}" class="clx-loading" aria-live="polite">{{ 'products.collection.loading' | t }}</p>
+                {%- endif -%}
+              {%- endif -%}
+            {%- endif -%}
+          {%- endpaginate -%}
+        </div>
+      </div>
+    {%- endif -%}
+  </div>
+</div>
+{% schema %}
+{
+  "name": "t:sections.main-collection.name",
+  "disabled_on": {
+    "groups": [
+      "header",
+      "footer"
+    ]
+  },
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme"
+    , "default": "scheme-1" },
+    {
+      "type": "header",
+      "content": "t:sections.main-collection.settings.header__1.content"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "t:sections.main-collection.settings.padding_top.label",
+      "min": 0,
+      "max": 160,
+      "step": 4,
+      "unit": "px",
+      "default": 56
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "t:sections.main-collection.settings.padding_bottom.label",
+      "min": 0,
+      "max": 160,
+      "step": 4,
+      "unit": "px",
+      "default": 100
+    },
+    {
+      "type": "range",
+      "id": "margin_top",
+      "label": "Margin top",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "margin_bottom",
+      "label": "Margin bottom",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "header",
+      "content": "Product grid layout"
+    },
+    {
+      "type": "select",
+      "id": "collection_layout",
+      "label": "Collection layout",
+      "options": [
+        {
+          "value": "grid",
+          "label": "Grid (multi-column)"
+        },
+        {
+          "value": "list",
+          "label": "List / Vertical (single column)"
+        }
+      ],
+      "default": "grid"
+    },
+    {
+      "type": "select",
+      "id": "card_layout",
+      "label": "Product card style",
+      "options": [
+        {
+          "value": "sleek",
+          "label": "Sleek — soft corners, gentle shadow"
+        },
+        {
+          "value": "editorial",
+          "label": "Editorial — large image, quiet details"
+        },
+        {
+          "value": "image_hover_quickadd",
+          "label": "Quick add — subtle plus on the image"
+        }
+      ],
+      "default": "sleek",
+      "info": "Overrides the theme-wide product card layout setting for this collection."
+    },
+    {
+      "type": "header",
+      "content": "Hero banner"
+    },
+    {
+      "type": "range",
+      "id": "hero_padding_top",
+      "label": "Hero padding top",
+      "min": 0,
+      "max": 120,
+      "step": 4,
+      "unit": "px",
+      "default": 48
+    },
+    {
+      "type": "range",
+      "id": "hero_padding_bottom",
+      "label": "Hero padding bottom",
+      "min": 0,
+      "max": 120,
+      "step": 4,
+      "unit": "px",
+      "default": 56
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:sections.main-collection.presets.preset__1.name"
+    }
+  ]
+}
+{% endschema %}
